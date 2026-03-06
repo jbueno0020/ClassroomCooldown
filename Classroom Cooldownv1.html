@@ -2,467 +2,506 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Settle In — Classroom Cooldown</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg: #0d1b2a;
-    --deep: #091526;
-    --teal: #3ecfb2;
-    --teal-dim: rgba(62,207,178,0.12);
-    --teal-glow: rgba(62,207,178,0.35);
-    --gold: #e8c97e;
-    --text: #d4e8e0;
-    --muted: rgba(212,232,224,0.45);
-  }
+:root {
+  --bg: #0d1b2a;
+  --deep: #091526;
+  --teal: #3ecfb2;
+  --teal-dim: rgba(62,207,178,0.12);
+  --teal-glow: rgba(62,207,178,0.35);
+  --gold: #e8c97e;
+  --text: #d4e8e0;
+  --muted: rgba(212,232,224,0.45);
+}
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    overflow: hidden;
-    user-select: none;
-  }
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
 
-  /* ── Background canvas ── */
-  #bg-canvas {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-  }
+/* ── Canvas ── */
+#bg-canvas { position: fixed; inset: 0; z-index: 0; }
 
-  /* ── Layout ── */
-  .shell {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    gap: 0;
-  }
+/* ── Vignette ── */
+.vignette {
+  position: fixed; inset: 0; z-index: 3;
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(9,21,38,0.72) 100%);
+  pointer-events: none;
+}
 
-  /* ── Header ── */
-  .header {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 32px;
-    z-index: 10;
-  }
+/* ── Shell ── */
+.shell {
+  position: relative; z-index: 4;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100vh; gap: 0;
+}
 
-  .brand {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.15rem;
-    font-weight: 300;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
+/* ── Header ── */
+.header {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px; z-index: 12;
+}
+.brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem; font-weight: 300;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--muted);
+}
+.session-timer {
+  font-size: 1rem; font-weight: 300;
+  letter-spacing: 0.1em; color: var(--muted);
+  font-variant-numeric: tabular-nums; transition: color 0.4s;
+}
+.session-timer.urgent { color: var(--gold); }
 
-  .session-timer {
-    font-size: 1rem;
-    font-weight: 300;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-    transition: color 0.4s;
-  }
-  .session-timer.urgent { color: var(--gold); }
+/* ── Progress bar ── */
+.progress-bar-wrap {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 3px; background: rgba(255,255,255,0.06); z-index: 13;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--gold));
+  transition: width 1s linear;
+  box-shadow: 0 0 8px var(--teal-glow);
+}
 
-  /* ── Progress bar ── */
-  .progress-bar-wrap {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: rgba(255,255,255,0.06);
-    z-index: 11;
-  }
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--teal), var(--gold));
-    transition: width 1s linear;
-    box-shadow: 0 0 8px var(--teal-glow);
-  }
+/* ── Phase label ── */
+.phase-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
+  letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 18px;
+  opacity: 0.85; min-height: 1.4em; transition: opacity 0.5s;
+}
 
-  /* ── Phase label ── */
-  .phase-label {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(0.85rem, 1.5vw, 1rem);
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: var(--teal);
-    margin-bottom: 18px;
-    opacity: 0.85;
-    min-height: 1.4em;
-    transition: opacity 0.5s;
-  }
+/* ── Orb ── */
+.orb-container {
+  position: relative; display: flex;
+  align-items: center; justify-content: center;
+  width: clamp(200px, 30vmin, 320px);
+  height: clamp(200px, 30vmin, 320px);
+}
+.orb-ring {
+  position: absolute; border-radius: 50%;
+  border: 1px solid var(--teal-glow);
+  animation: pulse-ring 4s ease-in-out infinite;
+}
+.orb-ring:nth-child(1) { width: 110%; height: 110%; animation-delay: 0s; }
+.orb-ring:nth-child(2) { width: 125%; height: 125%; animation-delay: 0.8s; opacity: 0.5; }
+.orb-ring:nth-child(3) { width: 142%; height: 142%; animation-delay: 1.6s; opacity: 0.25; }
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.04); opacity: 0.2; }
+}
 
-  /* ── Orb ── */
-  .orb-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: clamp(220px, 32vmin, 340px);
-    height: clamp(220px, 32vmin, 340px);
-    margin: 0;
-  }
+.orb {
+  position: relative; z-index: 2;
+  width: 100%; height: 100%; border-radius: 50%;
+  background: radial-gradient(circle at 38% 36%, rgba(62,207,178,0.22) 0%, rgba(13,27,42,0.9) 65%);
+  border: 1.5px solid rgba(62,207,178,0.4);
+  box-shadow: 0 0 40px rgba(62,207,178,0.18), inset 0 0 60px rgba(62,207,178,0.08);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  transition: box-shadow 1.4s ease-in-out;
+}
+.orb-content {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  transition: opacity 0.32s ease, transform 0.32s ease;
+}
+.orb.paused .orb-content { opacity: 0.12; }
+.orb-pause-overlay {
+  position: absolute; inset: 0; border-radius: 50%;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; pointer-events: none;
+}
+.orb-pause-overlay.show { display: flex; }
+.pause-icon { font-size: clamp(1.8rem, 4.5vmin, 2.8rem); color: var(--teal); opacity: 0.75; line-height: 1; }
+.pause-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(0.58rem, 1.1vmin, 0.7rem);
+  letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted);
+}
+.orb-count {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.8rem, 6.5vmin, 4.8rem);
+  font-weight: 300; line-height: 1; color: var(--teal);
+  text-shadow: 0 0 30px var(--teal-glow);
+  font-variant-numeric: tabular-nums; transition: color 0.4s;
+}
+.orb-count.hold { color: var(--gold); text-shadow: 0 0 30px rgba(232,201,126,0.4); }
+.orb-word {
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(0.62rem, 1.1vmin, 0.78rem);
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--muted); margin-top: 6px;
+}
 
-  .orb-ring {
-    position: absolute;
-    border-radius: 50%;
-    border: 1px solid var(--teal-glow);
-    animation: pulse-ring 4s ease-in-out infinite;
-  }
-  .orb-ring:nth-child(1) { width: 110%; height: 110%; animation-delay: 0s; }
-  .orb-ring:nth-child(2) { width: 125%; height: 125%; animation-delay: 0.8s; opacity: 0.5; }
-  .orb-ring:nth-child(3) { width: 142%; height: 142%; animation-delay: 1.6s; opacity: 0.25; }
+/* ── Breath text ── */
+.breath-text {
+  margin-top: 20px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.1rem, 2.6vmin, 1.8rem);
+  font-weight: 300; font-style: italic;
+  color: var(--text); letter-spacing: 0.04em;
+  text-align: center; min-height: 2.2rem;
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 0.6s, transform 0.6s;
+}
+.breath-text.visible { opacity: 1; transform: translateY(0); }
 
-  @keyframes pulse-ring {
-    0%, 100% { transform: scale(1); opacity: 0.6; }
-    50% { transform: scale(1.04); opacity: 0.2; }
-  }
+/* ── Cycle counter ── */
+.cycle-counter {
+  font-size: 0.63rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgba(62,207,178,0.38);
+  margin-top: 8px; min-height: 1em;
+}
 
-  .orb {
-    position: relative;
-    z-index: 2;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 38% 36%, rgba(62,207,178,0.22) 0%, rgba(13,27,42,0.9) 65%);
-    border: 1.5px solid rgba(62,207,178,0.4);
-    box-shadow:
-      0 0 40px rgba(62,207,178,0.18),
-      inset 0 0 60px rgba(62,207,178,0.08);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.1s;
-  }
+/* ── Calm arc ── */
+.calm-wrap {
+  margin-top: 16px; display: flex;
+  flex-direction: column; align-items: center; gap: 4px;
+  opacity: 1; transition: opacity 0.6s;
+}
+.calm-bg-arc { stroke: rgba(62,207,178,0.1); stroke-width: 3.5; fill: none; stroke-linecap: round; }
+.calm-fill-arc { stroke: rgba(62,207,178,0.65); stroke-width: 3.5; fill: none; stroke-linecap: round; transition: stroke-dasharray 1s linear; }
+.calm-label {
+  font-size: 0.6rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(62,207,178,0.35);
+}
 
-  /* Orb inner content wrapper */
-  .orb-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.4s;
-  }
-  .orb.paused .orb-content {
-    opacity: 0.12;
-  }
+/* ── Grounding prompts ── */
+.grounding-wrap {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%);
+  text-align: center; z-index: 10;
+  max-width: 600px; padding: 0 24px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+}
+.grounding-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(0.98rem, 2.3vmin, 1.32rem);
+  font-weight: 300; font-style: italic;
+  color: rgba(212,232,224,0.6); letter-spacing: 0.03em;
+  transition: opacity 0.8s; min-height: 2em; line-height: 1.55;
+}
+.grounding-next {
+  background: transparent;
+  border: 1px solid rgba(62,207,178,0.2);
+  color: rgba(62,207,178,0.45);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.62rem; letter-spacing: 0.18em;
+  text-transform: uppercase; padding: 6px 16px;
+  border-radius: 40px; cursor: pointer;
+  transition: all 0.2s; display: none;
+}
+.grounding-next:hover { border-color: rgba(62,207,178,0.5); color: var(--teal); }
+.grounding-next.show { display: block; }
 
-  /* Pause overlay inside orb */
-  .orb-pause-overlay {
-    position: absolute;
-    inset: 0;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    pointer-events: none;
-    border-radius: 50%;
-  }
-  .orb-pause-overlay.show { display: flex; }
-  .pause-icon {
-    font-size: clamp(2rem, 5vmin, 3.2rem);
-    color: var(--teal);
-    opacity: 0.75;
-    line-height: 1;
-  }
-  .pause-label {
-    font-family: 'DM Sans', sans-serif;
-    font-size: clamp(0.6rem, 1.2vmin, 0.72rem);
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
+/* ── Affirmation ticker ── */
+.affirmation-ticker {
+  position: fixed; bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: clamp(0.68rem, 1.5vmin, 0.85rem);
+  color: rgba(212,232,224,0.18); letter-spacing: 0.07em;
+  text-align: center; pointer-events: none;
+  z-index: 6; transition: opacity 1.2s;
+  white-space: nowrap; max-width: 90vw;
+}
 
-  .orb-count {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(3rem, 7vmin, 5rem);
-    font-weight: 300;
-    line-height: 1;
-    color: var(--teal);
-    text-shadow: 0 0 30px var(--teal-glow);
-    font-variant-numeric: tabular-nums;
-    transition: color 0.4s;
-  }
-  .orb-count.hold { color: var(--gold); text-shadow: 0 0 30px rgba(232,201,126,0.4); }
+/* ── Controls ── */
+.controls {
+  position: fixed; bottom: 84px; right: 28px;
+  display: flex; flex-direction: column; gap: 10px; z-index: 20;
+}
+.ctrl-btn {
+  background: rgba(62,207,178,0.08);
+  border: 1px solid rgba(62,207,178,0.25);
+  color: var(--teal); font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem; letter-spacing: 0.15em;
+  text-transform: uppercase; padding: 9px 18px;
+  border-radius: 40px; cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.ctrl-btn:hover { background: rgba(62,207,178,0.16); border-color: rgba(62,207,178,0.5); }
+.ctrl-btn.active { background: rgba(62,207,178,0.2); border-color: var(--teal); color: #fff; }
 
-  .orb-word {
-    font-family: 'DM Sans', sans-serif;
-    font-size: clamp(0.65rem, 1.2vmin, 0.8rem);
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-top: 6px;
-  }
+/* ── Duration picker ── */
+.duration-picker {
+  position: fixed; bottom: 84px; left: 28px;
+  display: flex; flex-direction: column; gap: 8px; z-index: 20;
+}
+.dur-label {
+  font-size: 0.63rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 2px;
+}
+.dur-btn {
+  background: transparent;
+  border: 1px solid rgba(212,232,224,0.15);
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem; letter-spacing: 0.12em;
+  padding: 7px 14px; border-radius: 40px;
+  cursor: pointer; transition: all 0.2s;
+}
+.dur-btn:hover { border-color: var(--teal-glow); color: var(--teal); }
+.dur-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(62,207,178,0.08); }
 
-  /* ── Breath instruction ── */
-  .breath-text {
-    margin-top: 22px;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(1.3rem, 3vmin, 2rem);
-    font-weight: 300;
-    font-style: italic;
-    color: var(--text);
-    letter-spacing: 0.04em;
-    text-align: center;
-    min-height: 2.4rem;
-    opacity: 0;
-    transform: translateY(6px);
-    transition: opacity 0.6s, transform 0.6s;
-  }
-  .breath-text.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── Bottom actions ── */
+.bottom-actions {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; z-index: 20;
+}
+.action-btn {
+  background: rgba(9,21,38,0.65);
+  border: 1px solid rgba(212,232,224,0.14);
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 0.66rem; letter-spacing: 0.14em;
+  text-transform: uppercase; padding: 8px 20px;
+  border-radius: 40px; cursor: pointer;
+  transition: all 0.25s; backdrop-filter: blur(8px);
+}
+.action-btn:hover { border-color: rgba(62,207,178,0.4); color: var(--teal); }
+.action-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(62,207,178,0.1); }
 
-  /* ── Cycle counter ── */
-  .cycle-counter {
-    font-size: 0.65rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: rgba(62,207,178,0.4);
-    margin-top: 8px;
-    min-height: 1em;
-    transition: opacity 0.5s;
-  }
+/* Volume row */
+.vol-row {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(9,21,38,0.65);
+  border: 1px solid rgba(212,232,224,0.14);
+  padding: 7px 14px; border-radius: 40px;
+  backdrop-filter: blur(8px);
+}
+.vol-btn {
+  background: transparent; border: none;
+  color: var(--muted); font-size: 0.95rem;
+  cursor: pointer; padding: 0; line-height: 1;
+  transition: color 0.2s; flex-shrink: 0;
+}
+.vol-btn:hover { color: var(--teal); }
+.vol-btn.muted { color: rgba(212,232,224,0.2); }
+#volSlider {
+  -webkit-appearance: none; appearance: none;
+  width: 76px; height: 2px;
+  background: rgba(62,207,178,0.28);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+#volSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--teal); cursor: pointer; border: none;
+  box-shadow: 0 0 6px rgba(62,207,178,0.5);
+}
+#volSlider::-moz-range-thumb {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--teal); cursor: pointer; border: none;
+}
 
-  /* ── Grounding prompts ── */
-  .grounding-wrap {
-    position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    z-index: 10;
-    max-width: 600px;
-    padding: 0 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-  .grounding-text {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(1rem, 2.4vmin, 1.35rem);
-    font-weight: 300;
-    font-style: italic;
-    color: rgba(212,232,224,0.6);
-    letter-spacing: 0.03em;
-    transition: opacity 0.8s;
-    min-height: 2em;
-    line-height: 1.55;
-  }
-  .grounding-next {
-    background: transparent;
-    border: 1px solid rgba(62,207,178,0.2);
-    color: rgba(62,207,178,0.45);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.63rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    padding: 6px 16px;
-    border-radius: 40px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: none;
-  }
-  .grounding-next:hover {
-    border-color: rgba(62,207,178,0.5);
-    color: var(--teal);
-  }
-  .grounding-next.show { display: block; }
+/* ── Done screen ── */
+.done-screen {
+  display: none; position: fixed; inset: 0;
+  background: var(--deep); z-index: 50;
+  flex-direction: column; align-items: center;
+  justify-content: center; gap: 18px;
+  text-align: center; padding: 40px;
+}
+.done-screen.show { display: flex; }
+.done-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 300; color: var(--teal);
+  text-shadow: 0 0 50px var(--teal-glow);
+  animation: fadeUp 1s ease forwards;
+}
+.done-sub {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1rem, 2.5vw, 1.45rem);
+  font-weight: 300; font-style: italic;
+  color: var(--muted); animation: fadeUp 1s 0.3s ease both;
+}
+.done-stat {
+  font-size: 0.7rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(62,207,178,0.45);
+  animation: fadeUp 1s 0.5s ease both;
+}
+.intention-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  animation: fadeUp 1s 0.55s ease both;
+}
+.intention-prompt {
+  font-size: 0.65rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--muted);
+}
+.intention-input {
+  background: transparent; border: none;
+  border-bottom: 1px solid rgba(62,207,178,0.28);
+  color: var(--text); font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.1rem, 2.8vw, 1.6rem); font-style: italic;
+  text-align: center; width: 200px; outline: none;
+  padding: 6px 10px; transition: border-color 0.2s;
+  user-select: text; -webkit-user-select: text;
+}
+.intention-input:focus { border-bottom-color: var(--teal); }
+.intention-input::placeholder { color: rgba(212,232,224,0.18); }
+.intention-display {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.2rem, 7vw, 4.5rem);
+  font-weight: 300; font-style: italic;
+  color: var(--gold); text-shadow: 0 0 40px rgba(232,201,126,0.45);
+  opacity: 0; transition: opacity 1s; min-height: 1.2em;
+  letter-spacing: 0.04em;
+}
+.done-restart {
+  margin-top: 8px; background: transparent;
+  border: 1px solid var(--teal); color: var(--teal);
+  font-family: 'DM Sans', sans-serif; font-size: 0.74rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  padding: 12px 32px; border-radius: 40px; cursor: pointer;
+  transition: background 0.2s; animation: fadeUp 1s 0.7s ease both;
+}
+.done-restart:hover { background: rgba(62,207,178,0.12); }
 
-  /* ── Controls ── */
-  .controls {
-    position: fixed;
-    bottom: 80px;
-    right: 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    z-index: 20;
-  }
+/* ── Mood check-in screen ── */
+.mood-screen {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--deep);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0; transition: opacity 0.9s;
+}
+.mood-screen.hidden { opacity: 0; pointer-events: none; }
+.mood-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.7rem, 4.5vw, 2.8rem);
+  font-weight: 300; color: var(--text);
+  margin-bottom: 10px; text-align: center;
+  animation: fadeUp 0.8s ease forwards;
+}
+.mood-subtitle {
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(0.75rem, 1.6vmin, 0.92rem);
+  color: var(--muted); letter-spacing: 0.12em;
+  margin-bottom: 44px; text-align: center;
+  animation: fadeUp 0.8s 0.15s ease both;
+}
+.mood-faces {
+  display: flex; gap: clamp(14px, 3vw, 28px);
+  margin-bottom: 14px;
+  animation: fadeUp 0.8s 0.25s ease both;
+}
+.mood-btn {
+  background: transparent;
+  border: 1px solid rgba(212,232,224,0.1);
+  border-radius: 50%;
+  width: clamp(52px, 9.5vmin, 78px);
+  height: clamp(52px, 9.5vmin, 78px);
+  font-size: clamp(1.7rem, 3.8vmin, 2.6rem);
+  cursor: pointer; display: flex; align-items: center;
+  justify-content: center; line-height: 1;
+  transition: transform 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.mood-btn:hover {
+  transform: scale(1.1);
+  border-color: rgba(62,207,178,0.4);
+  background: rgba(62,207,178,0.05);
+}
+.mood-btn.selected {
+  transform: scale(1.22);
+  border-color: var(--teal);
+  background: rgba(62,207,178,0.12);
+  box-shadow: 0 0 22px rgba(62,207,178,0.28);
+}
+.mood-labels {
+  display: flex; justify-content: space-between;
+  width: clamp(260px, 48vw, 400px);
+  margin-bottom: 38px;
+  animation: fadeUp 0.8s 0.3s ease both;
+}
+.mood-labels span {
+  font-size: 0.6rem; color: var(--muted);
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.mood-response {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(0.95rem, 2.3vmin, 1.35rem);
+  font-style: italic; color: var(--teal);
+  opacity: 0; transition: opacity 0.55s;
+  min-height: 1.8em; text-align: center;
+}
 
-  .ctrl-btn {
-    background: rgba(62,207,178,0.08);
-    border: 1px solid rgba(62,207,178,0.25);
-    color: var(--teal);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    padding: 9px 18px;
-    border-radius: 40px;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
-  }
-  .ctrl-btn:hover {
-    background: rgba(62,207,178,0.16);
-    border-color: rgba(62,207,178,0.5);
-  }
-  .ctrl-btn.active {
-    background: rgba(62,207,178,0.2);
-    border-color: var(--teal);
-    color: #fff;
-  }
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  /* ── Duration picker ── */
-  .duration-picker {
-    position: fixed;
-    bottom: 80px;
-    left: 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    z-index: 20;
-  }
-  .dur-label {
-    font-size: 0.65rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 2px;
-  }
-  .dur-btn {
-    background: transparent;
-    border: 1px solid rgba(212,232,224,0.15);
-    color: var(--muted);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-    padding: 7px 14px;
-    border-radius: 40px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .dur-btn:hover { border-color: var(--teal-glow); color: var(--teal); }
-  .dur-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(62,207,178,0.08); }
-
-  /* ── Bottom actions: Pause + Sound ── */
-  .bottom-actions {
-    position: fixed;
-    bottom: 26px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 10px;
-    z-index: 20;
-  }
-  .action-btn {
-    background: rgba(9,21,38,0.6);
-    border: 1px solid rgba(212,232,224,0.14);
-    color: var(--muted);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.68rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    padding: 8px 22px;
-    border-radius: 40px;
-    cursor: pointer;
-    transition: all 0.25s;
-    backdrop-filter: blur(8px);
-  }
-  .action-btn:hover {
-    border-color: rgba(62,207,178,0.4);
-    color: var(--teal);
-  }
-  .action-btn.active {
-    border-color: var(--teal);
-    color: var(--teal);
-    background: rgba(62,207,178,0.1);
-  }
-
-  /* ── Done screen ── */
-  .done-screen {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: var(--deep);
-    z-index: 50;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    text-align: center;
-    padding: 40px;
-  }
-  .done-screen.show { display: flex; }
-  .done-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(2.5rem, 8vw, 5rem);
-    font-weight: 300;
-    color: var(--teal);
-    text-shadow: 0 0 50px var(--teal-glow);
-    animation: fadeUp 1s ease forwards;
-  }
-  .done-sub {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(1rem, 2.5vw, 1.5rem);
-    font-weight: 300;
-    font-style: italic;
-    color: var(--muted);
-    animation: fadeUp 1s 0.3s ease both;
-  }
-  .done-stat {
-    font-size: 0.72rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: rgba(62,207,178,0.45);
-    animation: fadeUp 1s 0.5s ease both;
-  }
-  .done-restart {
-    margin-top: 24px;
-    background: transparent;
-    border: 1px solid var(--teal);
-    color: var(--teal);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.75rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    padding: 12px 32px;
-    border-radius: 40px;
-    cursor: pointer;
-    transition: background 0.2s;
-    animation: fadeUp 1s 0.6s ease both;
-  }
-  .done-restart:hover { background: rgba(62,207,178,0.12); }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  .controls { bottom: 90px; right: 12px; }
+  .duration-picker { bottom: 90px; left: 12px; }
+  .ctrl-btn { font-size: 0.6rem; padding: 8px 13px; }
+  .dur-btn { font-size: 0.6rem; padding: 6px 10px; }
+  #volSlider { width: 56px; }
+  .header { padding: 14px 20px; }
+  .affirmation-ticker { display: none; }
+}
 </style>
 </head>
 <body>
 
-<canvas id="bg-canvas"></canvas>
+<!-- ── Mood check-in ── -->
+<div class="mood-screen" id="moodScreen">
+  <div class="mood-title">How are you feeling right now?</div>
+  <div class="mood-subtitle">Tap one to begin your cooldown.</div>
+  <div class="mood-faces">
+    <button class="mood-btn" onclick="selectMood(0,this)" title="Overwhelmed">😰</button>
+    <button class="mood-btn" onclick="selectMood(1,this)" title="Anxious">😟</button>
+    <button class="mood-btn" onclick="selectMood(2,this)" title="Okay">😐</button>
+    <button class="mood-btn" onclick="selectMood(3,this)" title="Pretty good">🙂</button>
+    <button class="mood-btn" onclick="selectMood(4,this)" title="Calm">😊</button>
+  </div>
+  <div class="mood-labels">
+    <span>Overwhelmed</span><span></span><span>Neutral</span><span></span><span>Calm</span>
+  </div>
+  <div class="mood-response" id="moodResponse"></div>
+</div>
 
+<!-- ── Background ── -->
+<canvas id="bg-canvas"></canvas>
+<div class="vignette"></div>
+
+<!-- ── Progress bar ── -->
 <div class="progress-bar-wrap">
   <div class="progress-bar-fill" id="progressBar" style="width:100%"></div>
 </div>
 
+<!-- ── Header ── -->
 <div class="header">
   <span class="brand">Settle In</span>
   <span class="session-timer" id="sessionTimer">5:00</span>
 </div>
 
+<!-- ── Main ── -->
 <div class="shell">
   <div class="phase-label" id="phaseLabel">Breathe</div>
-
   <div class="orb-container">
     <div class="orb-ring"></div>
     <div class="orb-ring"></div>
@@ -478,126 +517,129 @@
       </div>
     </div>
   </div>
-
   <div class="breath-text visible" id="breathText">Close your eyes. Follow the orb.</div>
   <div class="cycle-counter" id="cycleCounter"></div>
+  <div class="calm-wrap" id="calmWrap">
+    <svg viewBox="0 0 100 55" width="96" height="52">
+      <path class="calm-bg-arc" d="M8,50 A42,42 0 0,0 92,50"/>
+      <path class="calm-fill-arc" id="calmFill" d="M8,50 A42,42 0 0,0 92,50" stroke-dasharray="0 132"/>
+    </svg>
+    <div class="calm-label">Calm Score: <span id="calmScore">0</span>%</div>
+  </div>
 </div>
 
+<!-- ── Grounding ── -->
 <div class="grounding-wrap">
   <div class="grounding-text" id="groundingText"></div>
   <button class="grounding-next" id="groundingNext" onclick="nextPrompt()">Next prompt ›</button>
 </div>
 
-<!-- Mode Controls -->
+<!-- ── Affirmation ticker ── -->
+<div class="affirmation-ticker" id="affirmTicker"></div>
+
+<!-- ── Mode Controls ── -->
 <div class="controls">
   <button class="ctrl-btn active" id="btnBreath" onclick="setMode('breath')">Breathing</button>
   <button class="ctrl-btn" id="btnGround" onclick="setMode('ground')">Grounding</button>
   <button class="ctrl-btn" id="btnFocus" onclick="setMode('focus')">Focus</button>
 </div>
 
-<!-- Duration Picker -->
+<!-- ── Duration ── -->
 <div class="duration-picker">
   <div class="dur-label">Duration</div>
-  <button class="dur-btn" onclick="setDuration(3, this)">3 min</button>
-  <button class="dur-btn active" onclick="setDuration(5, this)">5 min</button>
-  <button class="dur-btn" onclick="setDuration(7, this)">7 min</button>
-  <button class="dur-btn" onclick="setDuration(10, this)">10 min</button>
+  <button class="dur-btn" onclick="setDuration(3,this)">3 min</button>
+  <button class="dur-btn active" onclick="setDuration(5,this)">5 min</button>
+  <button class="dur-btn" onclick="setDuration(7,this)">7 min</button>
+  <button class="dur-btn" onclick="setDuration(10,this)">10 min</button>
 </div>
 
-<!-- Bottom actions -->
+<!-- ── Bottom actions ── -->
 <div class="bottom-actions">
   <button class="action-btn" id="btnPause" onclick="togglePause()">Pause</button>
-  <button class="action-btn" id="btnSound" onclick="toggleSound()">Sound Off</button>
+  <div class="vol-row">
+    <button class="vol-btn" id="btnMute" onclick="toggleMute()" title="Mute">&#9834;</button>
+    <input type="range" id="volSlider" min="0" max="100" value="40" oninput="setVolume(this.value)">
+  </div>
 </div>
 
-<!-- Done screen -->
+<!-- ── Done screen ── -->
 <div class="done-screen" id="doneScreen">
   <div class="done-title">You&#8217;re Ready.</div>
   <div class="done-sub">Your mind is settled. Your body is calm.<br>Let&#8217;s have a great afternoon.</div>
   <div class="done-stat" id="doneStat"></div>
+  <div class="intention-wrap">
+    <div class="intention-prompt">One word for your afternoon:</div>
+    <input type="text" id="intentionInput" class="intention-input"
+      placeholder="peace" maxlength="20"
+      onkeydown="handleIntentionKey(event)" oninput="clearIntentionDisplay()">
+    <div class="intention-display" id="intentionDisplay"></div>
+  </div>
   <button class="done-restart" onclick="restart()">Go Again</button>
 </div>
 
 <script>
-// ── Canvas background: floating particles ──────────────────────────
-const canvas = document.getElementById('bg-canvas');
-const ctx = canvas.getContext('2d');
-let W, H, particles = [];
+// ══ Canvas particles ══════════════════════════════════════════════
+var canvas = document.getElementById('bg-canvas');
+var ctx = canvas.getContext('2d');
+var W, H, particles = [];
 
-function resizeCanvas() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-}
+function resizeCanvas() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
 function mkParticle() {
-  return {
-    x: Math.random() * W,
-    y: Math.random() * H,
-    r: Math.random() * 1.8 + 0.4,
-    vx: (Math.random() - 0.5) * 0.18,
-    vy: -Math.random() * 0.22 - 0.06,
-    alpha: Math.random() * 0.35 + 0.08
-  };
+  return { x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.8+0.4,
+    vx: (Math.random()-0.5)*0.18, vy: -Math.random()*0.22-0.06, alpha: Math.random()*0.35+0.08 };
 }
-for (let i = 0; i < 90; i++) particles.push(mkParticle());
+for (var _i=0; _i<90; _i++) particles.push(mkParticle());
 
 function drawBg() {
-  ctx.clearRect(0, 0, W, H);
-  const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
-  grad.addColorStop(0, 'rgba(20,50,60,0.9)');
-  grad.addColorStop(1, 'rgba(9,21,38,1)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
-
-  const glow = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.min(W, H) * 0.38);
-  glow.addColorStop(0, 'rgba(62,207,178,0.055)');
-  glow.addColorStop(1, 'transparent');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  particles.forEach(p => {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(62,207,178,' + p.alpha + ')';
-    ctx.fill();
-    p.x += p.vx;
-    p.y += p.vy;
-    if (p.y < -4) { p.y = H + 4; p.x = Math.random() * W; }
-    if (p.x < -4) p.x = W + 4;
-    if (p.x > W + 4) p.x = -4;
+  ctx.clearRect(0,0,W,H);
+  var g = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.7);
+  g.addColorStop(0,'rgba(20,50,60,0.9)'); g.addColorStop(1,'rgba(9,21,38,1)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  var gl = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.min(W,H)*0.38);
+  gl.addColorStop(0,'rgba(62,207,178,0.055)'); gl.addColorStop(1,'transparent');
+  ctx.fillStyle=gl; ctx.fillRect(0,0,W,H);
+  particles.forEach(function(p) {
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(62,207,178,'+p.alpha+')'; ctx.fill();
+    p.x+=p.vx; p.y+=p.vy;
+    if (p.y<-4) { p.y=H+4; p.x=Math.random()*W; }
+    if (p.x<-4) p.x=W+4; if (p.x>W+4) p.x=-4;
   });
-
   requestAnimationFrame(drawBg);
 }
 drawBg();
 
-// ── State ──────────────────────────────────────────────────────────
-let totalSeconds = 5 * 60;
-let remaining = totalSeconds;
-let sessionInterval = null;
-let mode = 'breath';
-let isPaused = false;
-let breathCycles = 0;
-let currentPromptList = null;
-let currentPromptIdx = 0;
+// ══ State ════════════════════════════════════════════════════════
+var totalSeconds = 5*60;
+var remaining = totalSeconds;
+var sessionInterval = null;
+var mode = 'breath';
+var isPaused = false;
+var breathCycles = 0;
+var breathSecondsTotal = 0;
+var currentPromptList = null;
+var currentPromptIdx = 0;
+var phaseIdx = 0;
+var phaseCount = 0;
+var phaseInterval = null;
+var groundInterval = null;
+var groundIdx = 0;
+var affirmInterval = null;
+var affirmIdx = 0;
+var intentionTimer = null;
 
-// Breathing pattern: inhale 4, hold 4, exhale 6, rest 2
-const PHASES = [
-  { name: 'Inhale', duration: 4, word: 'inhale', scale: 1.18, label: 'Breathe',  textClass: '' },
-  { name: 'Hold',   duration: 4, word: 'hold',   scale: 1.18, label: 'Hold',     textClass: 'hold' },
-  { name: 'Exhale', duration: 6, word: 'exhale', scale: 0.88, label: 'Release',  textClass: '' },
-  { name: 'Rest',   duration: 2, word: 'rest',   scale: 0.88, label: 'Rest',     textClass: '' },
+// ══ Constants ════════════════════════════════════════════════════
+var PHASES = [
+  { name:'Inhale', duration:4, word:'inhale', scale:1.18, label:'Breathe', textClass:'' },
+  { name:'Hold',   duration:4, word:'hold',   scale:1.18, label:'Hold',    textClass:'hold' },
+  { name:'Exhale', duration:6, word:'exhale', scale:0.88, label:'Release', textClass:'' },
+  { name:'Rest',   duration:2, word:'rest',   scale:0.88, label:'Rest',    textClass:'' },
 ];
 
-let phaseIdx = 0;
-let phaseCount = 0;
-let phaseInterval = null;
-let groundInterval = null;
-let groundIdx = 0;
-
-const GROUNDING = [
+var GROUNDING = [
   'Notice 5 things you can see around you.',
   'Feel your feet flat on the floor.',
   'Take a slow breath in through your nose.',
@@ -610,26 +652,48 @@ const GROUNDING = [
   'Picture somewhere that makes you feel calm.',
 ];
 
-const FOCUS_PROMPTS = [
+var FOCUS_PROMPTS = [
   'What is one goal you have for this afternoon?',
   'Think of one person who believes in you.',
-  'What is one thing you\'re proud of from today?',
+  'What is one thing you\u2019re proud of from today?',
   'What does a good afternoon look like for you?',
   'Choose one word as your intention for the rest of the day.',
 ];
 
-// ── Session timer ──────────────────────────────────────────────────
+var AFFIRMATIONS = [
+  'You belong here.',
+  'It\u2019s okay to take a breath.',
+  'You are enough.',
+  'This moment is yours.',
+  'You deserve to feel calm.',
+  'Your feelings are valid.',
+  'Peace is within you.',
+  'You are doing your best.',
+  'This is a safe space.',
+  'You matter.',
+];
+
+var MOOD_MESSAGES = [
+  'Let\u2019s find some calm together.',
+  'You\u2019re safe here. Let\u2019s breathe.',
+  'Let\u2019s settle in.',
+  'Let\u2019s build on that feeling.',
+  'Beautiful. Let\u2019s deepen it.',
+];
+
+// ══ Session timer ════════════════════════════════════════════════
 function formatTime(s) {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return m + ':' + String(sec).padStart(2, '0');
+  var m = Math.floor(s/60), sec = s%60;
+  return m+':'+String(sec).padStart(2,'0');
 }
 
 function startSession() {
   remaining = totalSeconds;
   breathCycles = 0;
+  breathSecondsTotal = 0;
   updateTimerDisplay();
   document.getElementById('progressBar').style.width = '100%';
+  updateCalmArc();
   clearInterval(sessionInterval);
   sessionInterval = setInterval(tickSession, 1000);
 }
@@ -642,9 +706,10 @@ function startSessionFromRemaining() {
 function tickSession() {
   remaining--;
   updateTimerDisplay();
-  const pct = (remaining / totalSeconds) * 100;
-  document.getElementById('progressBar').style.width = pct + '%';
+  var pct = (remaining/totalSeconds)*100;
+  document.getElementById('progressBar').style.width = pct+'%';
   if (remaining <= 30) document.getElementById('sessionTimer').classList.add('urgent');
+  if (mode === 'breath' && !isPaused) { breathSecondsTotal++; updateCalmArc(); }
   if (remaining <= 0) endSession();
 }
 
@@ -654,17 +719,21 @@ function updateTimerDisplay() {
 
 function endSession() {
   clearAll();
-  const mins = Math.floor(totalSeconds / 60);
-  const cycleText = breathCycles > 0
-    ? mins + ' min session \u00b7 ' + breathCycles + ' breathing cycle' + (breathCycles !== 1 ? 's' : '')
-    : mins + ' min session complete';
-  document.getElementById('doneStat').textContent = cycleText;
+  stopAffirmations();
+  var mins = Math.floor(totalSeconds/60);
+  var ct = breathCycles > 0
+    ? mins+' min \u00b7 '+breathCycles+' breathing cycle'+(breathCycles!==1?'s':'')
+    : mins+' min session complete';
+  document.getElementById('doneStat').textContent = ct;
   document.getElementById('doneScreen').classList.add('show');
 }
 
 function restart() {
   document.getElementById('doneScreen').classList.remove('show');
   document.getElementById('sessionTimer').classList.remove('urgent');
+  document.getElementById('intentionInput').value = '';
+  document.getElementById('intentionDisplay').style.opacity = '0';
+  document.getElementById('intentionDisplay').textContent = '';
   isPaused = false;
   document.getElementById('btnPause').textContent = 'Pause';
   document.getElementById('btnPause').classList.remove('active');
@@ -674,33 +743,30 @@ function restart() {
   groundIdx = 0;
   startSession();
   setMode(mode);
+  startAffirmations();
 }
 
-// ── Breathing mode ─────────────────────────────────────────────────
-function startBreathing() {
-  runPhase();
-}
+// ══ Breathing mode ═══════════════════════════════════════════════
+function startBreathing() { runPhase(); }
 
 function runPhase() {
-  clearInterval(phaseInterval); // guard: never spawn duplicate intervals
-  const ph = PHASES[phaseIdx];
+  clearInterval(phaseInterval);
+  var ph = PHASES[phaseIdx];
   phaseCount = ph.duration;
   updateOrb(ph, phaseCount);
-  setOrbScale(ph.scale, ph.duration);
+  setOrbScaleAndGlow(ph);
+  playBreathCue(ph);
 
-  // Track completed cycles (count at start of each inhale)
   if (phaseIdx === 0) {
     breathCycles++;
-    if (breathCycles > 1) {
-      document.getElementById('cycleCounter').textContent = 'Cycle ' + breathCycles;
-    }
+    if (breathCycles > 1) document.getElementById('cycleCounter').textContent = 'Cycle '+breathCycles;
   }
 
   phaseInterval = setInterval(function() {
     phaseCount--;
     if (phaseCount <= 0) {
       clearInterval(phaseInterval);
-      phaseIdx = (phaseIdx + 1) % PHASES.length;
+      phaseIdx = (phaseIdx+1) % PHASES.length;
       runPhase();
     } else {
       document.getElementById('orbCount').textContent = phaseCount;
@@ -709,19 +775,17 @@ function runPhase() {
 }
 
 function resumeBreathing() {
-  clearInterval(phaseInterval); // safety
-  const ph = PHASES[phaseIdx];
-  // Restore orb display without resetting phaseCount
+  clearInterval(phaseInterval);
+  var ph = PHASES[phaseIdx];
   document.getElementById('orbCount').textContent = phaseCount > 0 ? phaseCount : ph.duration;
-  document.getElementById('orbCount').className = 'orb-count ' + (ph.textClass || '');
+  document.getElementById('orbCount').className = 'orb-count '+(ph.textClass||'');
   document.getElementById('orbWord').textContent = ph.word;
   document.getElementById('phaseLabel').textContent = ph.label;
-
   phaseInterval = setInterval(function() {
     phaseCount--;
     if (phaseCount <= 0) {
       clearInterval(phaseInterval);
-      phaseIdx = (phaseIdx + 1) % PHASES.length;
+      phaseIdx = (phaseIdx+1) % PHASES.length;
       runPhase();
     } else {
       document.getElementById('orbCount').textContent = phaseCount;
@@ -731,25 +795,41 @@ function resumeBreathing() {
 
 function updateOrb(ph, count) {
   document.getElementById('orbCount').textContent = count;
-  document.getElementById('orbCount').className = 'orb-count ' + (ph.textClass || '');
+  document.getElementById('orbCount').className = 'orb-count '+(ph.textClass||'');
   document.getElementById('orbWord').textContent = ph.word;
   document.getElementById('phaseLabel').textContent = ph.label;
 }
 
-function setOrbScale(scale, duration) {
-  const orb = document.getElementById('orb');
-  orb.style.transition = 'transform ' + duration + 's ease-in-out';
-  orb.style.transform = 'scale(' + scale + ')';
+function setOrbScaleAndGlow(ph) {
+  var orb = document.getElementById('orb');
+  var dur = ph.duration;
+  orb.style.transition = 'transform '+dur+'s ease-in-out, box-shadow 1.4s ease-in-out';
+  orb.style.transform = 'scale('+ph.scale+')';
+  if (ph.name === 'Inhale') {
+    orb.style.boxShadow = '0 0 70px rgba(62,207,178,0.48), 0 0 120px rgba(62,207,178,0.18), inset 0 0 70px rgba(62,207,178,0.13)';
+  } else if (ph.name === 'Hold') {
+    orb.style.boxShadow = '0 0 60px rgba(232,201,126,0.38), 0 0 100px rgba(232,201,126,0.13), inset 0 0 60px rgba(232,201,126,0.08)';
+  } else if (ph.name === 'Exhale') {
+    orb.style.boxShadow = '0 0 25px rgba(62,207,178,0.12), inset 0 0 40px rgba(62,207,178,0.05)';
+  } else {
+    orb.style.boxShadow = '0 0 14px rgba(62,207,178,0.07), inset 0 0 25px rgba(62,207,178,0.03)';
+  }
 }
 
-// ── Grounding mode ─────────────────────────────────────────────────
+function resetOrbGlow() {
+  var orb = document.getElementById('orb');
+  orb.style.transition = 'transform 1s ease-in-out, box-shadow 1s ease-in-out';
+  orb.style.boxShadow = '0 0 40px rgba(62,207,178,0.18), inset 0 0 60px rgba(62,207,178,0.08)';
+}
+
+// ══ Grounding / Focus ════════════════════════════════════════════
 function startGrounding() {
   document.getElementById('phaseLabel').textContent = 'Grounding';
   document.getElementById('orbCount').textContent = '\u2736';
   document.getElementById('orbCount').className = 'orb-count';
   document.getElementById('orbWord').textContent = 'notice';
-  document.getElementById('orb').style.transform = 'scale(1)';
-  document.getElementById('orb').style.transition = 'transform 3s ease-in-out';
+  resetOrbScale(1, 3);
+  resetOrbGlow();
   document.getElementById('cycleCounter').textContent = '';
   currentPromptList = GROUNDING;
   currentPromptIdx = groundIdx;
@@ -757,20 +837,19 @@ function startGrounding() {
   document.getElementById('groundingNext').classList.add('show');
   clearInterval(groundInterval);
   groundInterval = setInterval(function() {
-    groundIdx = (groundIdx + 1) % GROUNDING.length;
+    groundIdx = (groundIdx+1) % GROUNDING.length;
     currentPromptIdx = groundIdx;
     showGrounding(GROUNDING[groundIdx]);
   }, 8000);
 }
 
-// ── Focus mode ─────────────────────────────────────────────────────
 function startFocus() {
   document.getElementById('phaseLabel').textContent = 'Reflect';
   document.getElementById('orbCount').textContent = '\u25c8';
   document.getElementById('orbCount').className = 'orb-count';
   document.getElementById('orbWord').textContent = 'reflect';
-  document.getElementById('orb').style.transform = 'scale(1.05)';
-  document.getElementById('orb').style.transition = 'transform 4s ease-in-out';
+  resetOrbScale(1.05, 4);
+  resetOrbGlow();
   document.getElementById('cycleCounter').textContent = '';
   currentPromptList = FOCUS_PROMPTS;
   currentPromptIdx = 0;
@@ -778,74 +857,85 @@ function startFocus() {
   document.getElementById('groundingNext').classList.add('show');
   clearInterval(groundInterval);
   groundInterval = setInterval(function() {
-    currentPromptIdx = (currentPromptIdx + 1) % FOCUS_PROMPTS.length;
+    currentPromptIdx = (currentPromptIdx+1) % FOCUS_PROMPTS.length;
     showGrounding(FOCUS_PROMPTS[currentPromptIdx]);
   }, 9000);
+}
+
+function resetOrbScale(scale, dur) {
+  var orb = document.getElementById('orb');
+  orb.style.transition = 'transform '+dur+'s ease-in-out, box-shadow 1s ease-in-out';
+  orb.style.transform = 'scale('+scale+')';
 }
 
 function showGrounding(text) {
   var el = document.getElementById('groundingText');
   el.style.opacity = '0';
-  setTimeout(function() {
-    el.textContent = text;
-    el.style.opacity = '1';
-  }, 500);
+  setTimeout(function() { el.textContent = text; el.style.opacity = '1'; }, 500);
 }
 
 function nextPrompt() {
   if (!currentPromptList) return;
   clearInterval(groundInterval);
-  currentPromptIdx = (currentPromptIdx + 1) % currentPromptList.length;
+  currentPromptIdx = (currentPromptIdx+1) % currentPromptList.length;
   if (mode === 'ground') groundIdx = currentPromptIdx;
   showGrounding(currentPromptList[currentPromptIdx]);
-  // Restart the auto-advance timer
-  var interval = mode === 'ground' ? 8000 : 9000;
+  var iv = mode === 'ground' ? 8000 : 9000;
   groundInterval = setInterval(function() {
-    currentPromptIdx = (currentPromptIdx + 1) % currentPromptList.length;
+    currentPromptIdx = (currentPromptIdx+1) % currentPromptList.length;
     if (mode === 'ground') groundIdx = currentPromptIdx;
     showGrounding(currentPromptList[currentPromptIdx]);
-  }, interval);
+  }, iv);
 }
 
-// ── Mode switcher ──────────────────────────────────────────────────
+// ══ Mode switcher ════════════════════════════════════════════════
 function setMode(m) {
   mode = m;
   clearBreath();
-
   document.querySelectorAll('.ctrl-btn').forEach(function(b) { b.classList.remove('active'); });
-  var btn = document.getElementById('btn' + m.charAt(0).toUpperCase() + m.slice(1));
+  var btn = document.getElementById('btn'+m.charAt(0).toUpperCase()+m.slice(1));
   if (btn) btn.classList.add('active');
-
   document.getElementById('groundingText').textContent = '';
   document.getElementById('groundingNext').classList.remove('show');
   document.getElementById('cycleCounter').textContent = '';
-
+  document.getElementById('calmWrap').style.opacity = m==='breath' ? '1' : '0';
   var bt = document.getElementById('breathText');
 
-  if (m === 'breath') {
-    bt.textContent = 'Follow the orb. Breathe slowly.';
-    bt.classList.add('visible');
-    startBreathing();
-  } else if (m === 'ground') {
-    bt.textContent = 'Read each prompt. Pause and notice.';
-    bt.classList.add('visible');
-    startGrounding();
-  } else if (m === 'focus') {
-    bt.textContent = 'Sit with the question. There\u2019s no wrong answer.';
-    bt.classList.add('visible');
-    startFocus();
-  }
+  crossfadeOrb(function() {
+    if (m === 'breath') {
+      bt.textContent = 'Follow the orb. Breathe slowly.';
+      bt.classList.add('visible');
+      startBreathing();
+    } else if (m === 'ground') {
+      bt.textContent = 'Read each prompt. Pause and notice.';
+      bt.classList.add('visible');
+      startGrounding();
+    } else if (m === 'focus') {
+      bt.textContent = 'Sit with the question. There\u2019s no wrong answer.';
+      bt.classList.add('visible');
+      startFocus();
+    }
+  });
+}
+
+function crossfadeOrb(callback) {
+  var c = document.getElementById('orbContent');
+  c.style.opacity = '0';
+  c.style.transform = 'scale(0.91)';
+  setTimeout(function() {
+    if (callback) callback();
+    c.style.opacity = '1';
+    c.style.transform = 'scale(1)';
+  }, 320);
 }
 
 function clearBreath() {
   clearInterval(phaseInterval);
   clearInterval(groundInterval);
-  phaseInterval = null;
-  groundInterval = null;
-  phaseIdx = 0;
-  phaseCount = 0;
-  breathCycles = 0;
-  currentPromptList = null;
+  phaseInterval = null; groundInterval = null;
+  phaseIdx = 0; phaseCount = 0;
+  breathCycles = 0; currentPromptList = null;
+  stopBreathCue();
 }
 
 function clearAll() {
@@ -854,23 +944,17 @@ function clearAll() {
   sessionInterval = null;
 }
 
-// ── Pause / Resume ─────────────────────────────────────────────────
-function togglePause() {
-  if (isPaused) {
-    resumeSession();
-  } else {
-    pauseSession();
-  }
-}
+// ══ Pause / Resume ═══════════════════════════════════════════════
+function togglePause() { isPaused ? resumeSession() : pauseSession(); }
 
 function pauseSession() {
   isPaused = true;
   clearInterval(sessionInterval);
   clearInterval(phaseInterval);
   clearInterval(groundInterval);
-  // Smooth the orb to rest
+  stopBreathCue();
   var orb = document.getElementById('orb');
-  orb.style.transition = 'transform 0.8s ease-in-out';
+  orb.style.transition = 'transform 0.9s ease-in-out, box-shadow 0.9s ease-in-out';
   orb.classList.add('paused');
   document.getElementById('orbPause').classList.add('show');
   document.getElementById('btnPause').textContent = 'Resume';
@@ -884,18 +968,14 @@ function resumeSession() {
   document.getElementById('orbPause').classList.remove('show');
   document.getElementById('btnPause').textContent = 'Pause';
   document.getElementById('btnPause').classList.remove('active');
-
-  // Resume session timer
   startSessionFromRemaining();
-
-  // Resume mode-specific content
   if (mode === 'breath') {
     resumeBreathing();
   } else if (mode === 'ground') {
     showGrounding(currentPromptList ? currentPromptList[currentPromptIdx] : GROUNDING[groundIdx]);
     clearInterval(groundInterval);
     groundInterval = setInterval(function() {
-      groundIdx = (groundIdx + 1) % GROUNDING.length;
+      groundIdx = (groundIdx+1) % GROUNDING.length;
       currentPromptIdx = groundIdx;
       showGrounding(GROUNDING[groundIdx]);
     }, 8000);
@@ -904,17 +984,17 @@ function resumeSession() {
     showGrounding(list[currentPromptIdx]);
     clearInterval(groundInterval);
     groundInterval = setInterval(function() {
-      currentPromptIdx = (currentPromptIdx + 1) % FOCUS_PROMPTS.length;
+      currentPromptIdx = (currentPromptIdx+1) % FOCUS_PROMPTS.length;
       showGrounding(FOCUS_PROMPTS[currentPromptIdx]);
     }, 9000);
   }
 }
 
-// ── Duration setter ────────────────────────────────────────────────
+// ══ Duration ═════════════════════════════════════════════════════
 function setDuration(mins, btn) {
   document.querySelectorAll('.dur-btn').forEach(function(b) { b.classList.remove('active'); });
   btn.classList.add('active');
-  totalSeconds = mins * 60;
+  totalSeconds = mins*60;
   isPaused = false;
   document.getElementById('btnPause').textContent = 'Pause';
   document.getElementById('btnPause').classList.remove('active');
@@ -927,109 +1007,276 @@ function setDuration(mins, btn) {
   setMode(mode);
 }
 
-// ── Ambient sound (Web Audio API) ──────────────────────────────────
-var audioCtx = null;
-var ambientNodes = [];
-var soundEnabled = false;
-
-function toggleSound() {
-  if (!soundEnabled) {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    // Resume context if suspended (browser autoplay policy)
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-    startAmbient();
-    soundEnabled = true;
-    document.getElementById('btnSound').textContent = 'Sound On';
-    document.getElementById('btnSound').classList.add('active');
-  } else {
-    stopAmbient();
-    soundEnabled = false;
-    document.getElementById('btnSound').textContent = 'Sound Off';
-    document.getElementById('btnSound').classList.remove('active');
-  }
+// ══ Calm Score Arc ═══════════════════════════════════════════════
+function updateCalmArc() {
+  var pct = totalSeconds > 0 ? Math.min(1, breathSecondsTotal/totalSeconds) : 0;
+  var fill = Math.round(pct*132);
+  document.getElementById('calmFill').setAttribute('stroke-dasharray', fill+' '+(132-fill));
+  document.getElementById('calmScore').textContent = Math.round(pct*100);
 }
 
-function startAmbient() {
+// ══ Affirmations ═════════════════════════════════════════════════
+function startAffirmations() {
+  affirmIdx = 0;
+  showAffirmation(AFFIRMATIONS[0]);
+  clearInterval(affirmInterval);
+  affirmInterval = setInterval(function() {
+    affirmIdx = (affirmIdx+1) % AFFIRMATIONS.length;
+    showAffirmation(AFFIRMATIONS[affirmIdx]);
+  }, 8000);
+}
+
+function showAffirmation(text) {
+  var el = document.getElementById('affirmTicker');
+  el.style.opacity = '0';
+  setTimeout(function() { el.textContent = text; el.style.opacity = '1'; }, 600);
+}
+
+function stopAffirmations() {
+  clearInterval(affirmInterval);
+  affirmInterval = null;
+}
+
+// ══ Today's Intention ════════════════════════════════════════════
+function handleIntentionKey(e) {
+  if (e.key === 'Enter') revealIntention();
+}
+
+function clearIntentionDisplay() {
+  // If user starts typing again after display showed, reset it
+  if (intentionTimer) { clearTimeout(intentionTimer); intentionTimer = null; }
+  document.getElementById('intentionDisplay').style.opacity = '0';
+}
+
+function revealIntention() {
+  var word = document.getElementById('intentionInput').value.trim();
+  if (!word) return;
+  var display = document.getElementById('intentionDisplay');
+  display.textContent = word;
+  display.style.opacity = '1';
+  document.getElementById('intentionInput').style.opacity = '0.3';
+  if (intentionTimer) clearTimeout(intentionTimer);
+  intentionTimer = setTimeout(function() {
+    display.style.opacity = '0';
+    document.getElementById('intentionInput').style.opacity = '1';
+    setTimeout(function() {
+      display.textContent = '';
+      document.getElementById('intentionInput').value = '';
+    }, 1100);
+    intentionTimer = null;
+  }, 5000);
+}
+
+// ══ Audio System ═════════════════════════════════════════════════
+var audioCtx = null;
+var masterGain = null;
+var ambientNodes = [];
+var breathCueOsc = null;
+var breathCueGain = null;
+var isMuted = false;
+var masterVolume = 0.40;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0; // will fade in
+  masterGain.connect(audioCtx.destination);
+}
+
+function buildAmbient() {
   if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 
-  // Gentle filtered white noise (soft rainfall / distant ocean)
-  var bufferSize = audioCtx.sampleRate * 4;
-  var noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  var data = noiseBuffer.getChannelData(0);
-  for (var i = 0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1;
-  }
-  var noiseSource = audioCtx.createBufferSource();
-  noiseSource.buffer = noiseBuffer;
-  noiseSource.loop = true;
+  // Fade master in over 3 seconds
+  masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+  masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  masterGain.gain.linearRampToValueAtTime(isMuted ? 0 : masterVolume, audioCtx.currentTime + 3);
 
-  var lowpass = audioCtx.createBiquadFilter();
-  lowpass.type = 'lowpass';
-  lowpass.frequency.value = 320;
-  lowpass.Q.value = 0.4;
+  var now = audioCtx.currentTime;
 
-  var noiseGain = audioCtx.createGain();
-  noiseGain.gain.value = 0.065;
+  // — White noise: "rain on glass" style —
+  var bufLen = audioCtx.sampleRate * 4;
+  var noiseBuf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  var nd = noiseBuf.getChannelData(0);
+  for (var ni = 0; ni < bufLen; ni++) nd[ni] = Math.random()*2-1;
+  var noiseSrc = audioCtx.createBufferSource();
+  noiseSrc.buffer = noiseBuf; noiseSrc.loop = true;
+  var noiseLP = audioCtx.createBiquadFilter();
+  noiseLP.type = 'lowpass'; noiseLP.frequency.value = 340; noiseLP.Q.value = 0.4;
+  var noiseGain = audioCtx.createGain(); noiseGain.gain.value = 0.055;
+  noiseSrc.connect(noiseLP); noiseLP.connect(noiseGain); noiseGain.connect(masterGain);
+  noiseSrc.start();
 
-  noiseSource.connect(lowpass);
-  lowpass.connect(noiseGain);
-  noiseGain.connect(audioCtx.destination);
-  noiseSource.start();
+  // — Binaural drone: ~40 Hz difference between L and R —
+  var droneL = audioCtx.createOscillator(); droneL.type = 'sine'; droneL.frequency.value = 110;
+  var panL = audioCtx.createStereoPanner(); panL.pan.value = -1;
+  var droneGainL = audioCtx.createGain(); droneGainL.gain.value = 0.038;
+  droneL.connect(droneGainL); droneGainL.connect(panL); panL.connect(masterGain); droneL.start();
 
-  // Low root drone (A1 = 55 Hz)
-  var drone = audioCtx.createOscillator();
-  drone.type = 'sine';
-  drone.frequency.value = 55;
-  var droneGain = audioCtx.createGain();
-  droneGain.gain.value = 0.032;
-  drone.connect(droneGain);
-  droneGain.connect(audioCtx.destination);
-  drone.start();
+  var droneR = audioCtx.createOscillator(); droneR.type = 'sine'; droneR.frequency.value = 150;
+  var panR = audioCtx.createStereoPanner(); panR.pan.value = 1;
+  var droneGainR = audioCtx.createGain(); droneGainR.gain.value = 0.038;
+  droneR.connect(droneGainR); droneGainR.connect(panR); panR.connect(masterGain); droneR.start();
 
-  // Perfect fifth harmonic (E2 = 82.5 Hz)
-  var fifth = audioCtx.createOscillator();
-  fifth.type = 'sine';
-  fifth.frequency.value = 82.5;
-  var fifthGain = audioCtx.createGain();
-  fifthGain.gain.value = 0.016;
-  fifth.connect(fifthGain);
-  fifthGain.connect(audioCtx.destination);
-  fifth.start();
+  // — Slow amplitude LFO on drone (atmospheric breathing) —
+  var ampLfo = audioCtx.createOscillator();
+  ampLfo.type = 'sine'; ampLfo.frequency.value = 0.09; // ~11s cycle
+  var ampLfoGain = audioCtx.createGain(); ampLfoGain.gain.value = 0.009;
+  ampLfo.connect(ampLfoGain);
+  ampLfoGain.connect(droneGainL.gain);
+  ampLfoGain.connect(droneGainR.gain);
+  ampLfo.start();
 
-  ambientNodes = [noiseSource, drone, fifth, lowpass, noiseGain, droneGain, fifthGain];
+  // — Shimmer: high triangle oscillators with slow LFO pitch drift —
+  var sh1 = audioCtx.createOscillator(); sh1.type = 'triangle'; sh1.frequency.value = 880;
+  var sg1 = audioCtx.createGain(); sg1.gain.value = 0.011;
+  var sl1 = audioCtx.createOscillator(); sl1.type = 'sine'; sl1.frequency.value = 0.06;
+  var sld1 = audioCtx.createGain(); sld1.gain.value = 18;
+  sl1.connect(sld1); sld1.connect(sh1.frequency);
+  sh1.connect(sg1); sg1.connect(masterGain); sh1.start(); sl1.start();
+
+  var sh2 = audioCtx.createOscillator(); sh2.type = 'triangle'; sh2.frequency.value = 1210;
+  var sg2 = audioCtx.createGain(); sg2.gain.value = 0.007;
+  var sl2 = audioCtx.createOscillator(); sl2.type = 'sine'; sl2.frequency.value = 0.04;
+  var sld2 = audioCtx.createGain(); sld2.gain.value = 28;
+  sl2.connect(sld2); sld2.connect(sh2.frequency);
+  sh2.connect(sg2); sg2.connect(masterGain); sh2.start(); sl2.start();
+
+  // — Third shimmer for richness —
+  var sh3 = audioCtx.createOscillator(); sh3.type = 'triangle'; sh3.frequency.value = 1540;
+  var sg3 = audioCtx.createGain(); sg3.gain.value = 0.004;
+  var sl3 = audioCtx.createOscillator(); sl3.type = 'sine'; sl3.frequency.value = 0.05;
+  var sld3 = audioCtx.createGain(); sld3.gain.value = 22;
+  sl3.connect(sld3); sld3.connect(sh3.frequency);
+  sh3.connect(sg3); sg3.connect(masterGain); sh3.start(); sl3.start();
+
+  ambientNodes = [noiseSrc, droneL, droneR, ampLfo, sh1, sh2, sh3,
+    sl1, sl2, sl3, noiseLP, noiseGain, droneGainL, droneGainR,
+    ampLfoGain, sg1, sg2, sg3, sld1, sld2, sld3, panL, panR];
 }
 
 function stopAmbient() {
   ambientNodes.forEach(function(n) {
-    try {
-      if (n.stop) n.stop();
-      n.disconnect();
-    } catch(e) {}
+    try { if (n.stop) n.stop(); n.disconnect(); } catch(e) {}
   });
   ambientNodes = [];
 }
 
-// ── Keyboard shortcuts ─────────────────────────────────────────────
-// Space = pause/resume  |  N = next prompt  |  S = toggle sound
+// — Breathing cue tones (layered on top of ambient) —
+function playBreathCue(ph) {
+  if (!audioCtx || !masterGain) return;
+  stopBreathCue();
+  if (ph.name === 'Rest') return;
+
+  var now = audioCtx.currentTime;
+  var dur = ph.duration;
+  breathCueOsc = audioCtx.createOscillator();
+  breathCueGain = audioCtx.createGain();
+  breathCueGain.gain.setValueAtTime(0, now);
+  breathCueOsc.type = ph.name === 'Hold' ? 'sine' : 'triangle';
+
+  if (ph.name === 'Inhale') {
+    breathCueOsc.frequency.setValueAtTime(220, now);
+    breathCueOsc.frequency.linearRampToValueAtTime(440, now+dur);
+    breathCueGain.gain.linearRampToValueAtTime(0.065, now+0.5);
+    breathCueGain.gain.setValueAtTime(0.065, now+dur-0.5);
+    breathCueGain.gain.linearRampToValueAtTime(0, now+dur);
+  } else if (ph.name === 'Hold') {
+    breathCueOsc.frequency.setValueAtTime(440, now);
+    breathCueGain.gain.linearRampToValueAtTime(0.03, now+0.5);
+    breathCueGain.gain.setValueAtTime(0.03, now+dur-0.4);
+    breathCueGain.gain.linearRampToValueAtTime(0, now+dur);
+  } else if (ph.name === 'Exhale') {
+    breathCueOsc.frequency.setValueAtTime(440, now);
+    breathCueOsc.frequency.linearRampToValueAtTime(220, now+dur);
+    breathCueGain.gain.linearRampToValueAtTime(0.05, now+0.4);
+    breathCueGain.gain.setValueAtTime(0.05, now+dur-0.6);
+    breathCueGain.gain.linearRampToValueAtTime(0, now+dur);
+  }
+
+  breathCueOsc.connect(breathCueGain);
+  breathCueGain.connect(masterGain);
+  breathCueOsc.start(now);
+  breathCueOsc.stop(now+dur+0.15);
+}
+
+function stopBreathCue() {
+  if (breathCueOsc) {
+    try { breathCueOsc.stop(audioCtx ? audioCtx.currentTime+0.08 : 0); breathCueOsc.disconnect(); } catch(e) {}
+    breathCueOsc = null;
+  }
+  if (breathCueGain) {
+    try { breathCueGain.disconnect(); } catch(e) {}
+    breathCueGain = null;
+  }
+}
+
+// Volume controls
+function toggleMute() {
+  isMuted = !isMuted;
+  if (masterGain && audioCtx) {
+    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    masterGain.gain.setTargetAtTime(isMuted ? 0 : masterVolume, audioCtx.currentTime, 0.12);
+  }
+  updateVolUI();
+}
+
+function setVolume(val) {
+  masterVolume = val/100;
+  if (audioCtx && masterGain && !isMuted) {
+    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    masterGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.06);
+  }
+}
+
+function updateVolUI() {
+  var btn = document.getElementById('btnMute');
+  btn.textContent = isMuted ? '\uD83D\uDD07' : '\u266a';
+  btn.classList.toggle('muted', isMuted);
+}
+
+// ══ Mood check-in ════════════════════════════════════════════════
+function selectMood(idx, btnEl) {
+  initAudio(); // safe on first user interaction
+  document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
+  btnEl.classList.add('selected');
+  var resp = document.getElementById('moodResponse');
+  resp.textContent = MOOD_MESSAGES[idx];
+  resp.style.opacity = '1';
+
+  setTimeout(function() {
+    var ms = document.getElementById('moodScreen');
+    ms.classList.add('hidden');
+    setTimeout(function() { ms.style.display = 'none'; }, 950);
+    startSession();
+    setMode('breath');
+    startAffirmations();
+    buildAmbient();
+  }, 1500);
+}
+
+// ══ Keyboard shortcuts ═══════════════════════════════════════════
 document.addEventListener('keydown', function(e) {
-  if (e.target.tagName === 'BUTTON') return; // don't intercept button clicks
-  if (e.code === 'Space') {
-    e.preventDefault();
-    togglePause();
-  } else if (e.code === 'KeyN') {
-    if (mode !== 'breath') nextPrompt();
-  } else if (e.code === 'KeyS') {
-    toggleSound();
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  else if (e.code === 'KeyN') { if (mode !== 'breath') nextPrompt(); }
+  else if (e.code === 'KeyM') { toggleMute(); }
+  else if (e.code === 'Enter' && document.getElementById('doneScreen').classList.contains('show')) {
+    revealIntention();
   }
 });
 
-// ── Init ───────────────────────────────────────────────────────────
-startSession();
-setMode('breath');
+// Allow pressing Enter on intention input without affecting global keydown
+document.getElementById('intentionInput').addEventListener('keydown', function(e) {
+  e.stopPropagation();
+  if (e.key === 'Enter') revealIntention();
+});
+
+// ══ Init ═════════════════════════════════════════════════════════
+// Mood screen is shown; session starts only after mood selection.
+// Pre-render the timer display:
+document.getElementById('sessionTimer').textContent = formatTime(totalSeconds);
 </script>
 </body>
 </html>
