@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settle In — Classroom Cooldown</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1b2a;
+    --deep: #091526;
+    --teal: #3ecfb2;
+    --teal-dim: rgba(62,207,178,0.12);
+    --teal-glow: rgba(62,207,178,0.35);
+    --gold: #e8c97e;
+    --text: #d4e8e0;
+    --muted: rgba(212,232,224,0.45);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Background canvas ── */
+  #bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+
+  /* ── Layout ── */
+  .shell {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 0;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    z-index: 10;
+  }
+
+  .brand {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.15rem;
+    font-weight: 300;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .session-timer {
+    font-size: 1rem;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    transition: color 0.4s;
+  }
+  .session-timer.urgent { color: var(--gold); }
+
+  /* ── Progress bar ── */
+  .progress-bar-wrap {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    z-index: 11;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--teal), var(--gold));
+    transition: width 1s linear;
+    box-shadow: 0 0 8px var(--teal-glow);
+  }
+
+  /* ── Phase label ── */
+  .phase-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(0.85rem, 1.5vw, 1rem);
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 18px;
+    opacity: 0.85;
+    min-height: 1.4em;
+    transition: opacity 0.5s;
+  }
+
+  /* ── Orb ── */
+  .orb-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(220px, 32vmin, 340px);
+    height: clamp(220px, 32vmin, 340px);
+    margin: 0;
+  }
+
+  .orb-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--teal-glow);
+    animation: pulse-ring 4s ease-in-out infinite;
+  }
+  .orb-ring:nth-child(1) { width: 110%; height: 110%; animation-delay: 0s; }
+  .orb-ring:nth-child(2) { width: 125%; height: 125%; animation-delay: 0.8s; opacity: 0.5; }
+  .orb-ring:nth-child(3) { width: 142%; height: 142%; animation-delay: 1.6s; opacity: 0.25; }
+
+  @keyframes pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.04); opacity: 0.2; }
+  }
+
+  .orb {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 36%, rgba(62,207,178,0.22) 0%, rgba(13,27,42,0.9) 65%);
+    border: 1.5px solid rgba(62,207,178,0.4);
+    box-shadow:
+      0 0 40px rgba(62,207,178,0.18),
+      inset 0 0 60px rgba(62,207,178,0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s;
+  }
+
+  .orb-count {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(3rem, 7vmin, 5rem);
+    font-weight: 300;
+    line-height: 1;
+    color: var(--teal);
+    text-shadow: 0 0 30px var(--teal-glow);
+    font-variant-numeric: tabular-nums;
+    transition: color 0.4s;
+  }
+  .orb-count.hold { color: var(--gold); text-shadow: 0 0 30px rgba(232,201,126,0.4); }
+
+  .orb-word {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(0.65rem, 1.2vmin, 0.8rem);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ── Breath instruction ── */
+  .breath-text {
+    margin-top: 22px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.3rem, 3vmin, 2rem);
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text);
+    letter-spacing: 0.04em;
+    text-align: center;
+    min-height: 2.4rem;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  .breath-text.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── Grounding prompts ── */
+  .grounding-wrap {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+    max-width: 560px;
+    padding: 0 24px;
+  }
+  .grounding-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(0.95rem, 2.2vmin, 1.25rem);
+    font-weight: 300;
+    font-style: italic;
+    color: rgba(212,232,224,0.5);
+    letter-spacing: 0.03em;
+    transition: opacity 1s;
+    min-height: 2em;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    position: fixed;
+    bottom: 72px;
+    right: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 20;
+  }
+
+  .ctrl-btn {
+    background: rgba(62,207,178,0.08);
+    border: 1px solid rgba(62,207,178,0.25);
+    color: var(--teal);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 9px 18px;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .ctrl-btn:hover {
+    background: rgba(62,207,178,0.16);
+    border-color: rgba(62,207,178,0.5);
+  }
+  .ctrl-btn.active {
+    background: rgba(62,207,178,0.2);
+    border-color: var(--teal);
+    color: #fff;
+  }
+
+  /* ── Duration picker ── */
+  .duration-picker {
+    position: fixed;
+    bottom: 72px;
+    left: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 20;
+  }
+  .dur-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .dur-btn {
+    background: transparent;
+    border: 1px solid rgba(212,232,224,0.15);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    padding: 7px 14px;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .dur-btn:hover { border-color: var(--teal-glow); color: var(--teal); }
+  .dur-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(62,207,178,0.08); }
+
+  /* ── Done screen ── */
+  .done-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--deep);
+    z-index: 50;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 40px;
+  }
+  .done-screen.show { display: flex; }
+  .done-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    font-weight: 300;
+    color: var(--teal);
+    text-shadow: 0 0 50px var(--teal-glow);
+    animation: fadeUp 1s ease forwards;
+  }
+  .done-sub {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1rem, 2.5vw, 1.5rem);
+    font-weight: 300;
+    font-style: italic;
+    color: var(--muted);
+    animation: fadeUp 1s 0.3s ease both;
+  }
+  .done-restart {
+    margin-top: 24px;
+    background: transparent;
+    border: 1px solid var(--teal);
+    color: var(--teal);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 12px 32px;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: background 0.2s;
+    animation: fadeUp 1s 0.6s ease both;
+  }
+  .done-restart:hover { background: rgba(62,207,178,0.12); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Orb breathing scale animation via JS */
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="progress-bar-wrap">
+  <div class="progress-bar-fill" id="progressBar" style="width:100%"></div>
+</div>
+
+<div class="header">
+  <span class="brand">Settle In</span>
+  <span class="session-timer" id="sessionTimer">5:00</span>
+</div>
+
+<div class="shell">
+  <div class="phase-label" id="phaseLabel">Breathe</div>
+
+  <div class="orb-container">
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb" id="orb">
+      <div class="orb-count" id="orbCount">4</div>
+      <div class="orb-word" id="orbWord">inhale</div>
+    </div>
+  </div>
+
+  <div class="breath-text visible" id="breathText">Close your eyes. Follow the orb.</div>
+</div>
+
+<div class="grounding-wrap">
+  <div class="grounding-text" id="groundingText"></div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <button class="ctrl-btn active" id="btnBreath" onclick="setMode('breath')">Breathing</button>
+  <button class="ctrl-btn" id="btnGround" onclick="setMode('ground')">Grounding</button>
+  <button class="ctrl-btn" id="btnFocus" onclick="setMode('focus')">Focus</button>
+</div>
+
+<div class="duration-picker">
+  <div class="dur-label">Duration</div>
+  <button class="dur-btn active" onclick="setDuration(3, this)">3 min</button>
+  <button class="dur-btn" onclick="setDuration(5, this)">5 min</button>
+  <button class="dur-btn" onclick="setDuration(7, this)">7 min</button>
+</div>
+
+<!-- Done -->
+<div class="done-screen" id="doneScreen">
+  <div class="done-title">You're Ready.</div>
+  <div class="done-sub">Your mind is settled. Your body is calm.<br>Let's have a great afternoon.</div>
+  <button class="done-restart" onclick="restart()">Go Again</button>
+</div>
+
+<script>
+// ── Canvas background: floating particles ──────────────────────────
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resizeCanvas() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function mkParticle() {
+  return {
+    x: Math.random() * W,
+    y: Math.random() * H,
+    r: Math.random() * 1.8 + 0.4,
+    vx: (Math.random() - 0.5) * 0.18,
+    vy: -Math.random() * 0.22 - 0.06,
+    alpha: Math.random() * 0.35 + 0.08
+  };
+}
+for (let i = 0; i < 90; i++) particles.push(mkParticle());
+
+function drawBg() {
+  ctx.clearRect(0, 0, W, H);
+
+  // deep gradient
+  const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
+  grad.addColorStop(0, 'rgba(20,50,60,0.9)');
+  grad.addColorStop(1, 'rgba(9,21,38,1)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // glow center
+  const glow = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.min(W, H) * 0.38);
+  glow.addColorStop(0, 'rgba(62,207,178,0.055)');
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  // particles
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(62,207,178,${p.alpha})`;
+    ctx.fill();
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.y < -4) { p.y = H + 4; p.x = Math.random() * W; }
+    if (p.x < -4) p.x = W + 4;
+    if (p.x > W + 4) p.x = -4;
+  });
+
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ── State ──────────────────────────────────────────────────────────
+let totalSeconds = 5 * 60;
+let remaining = totalSeconds;
+let sessionInterval = null;
+let breathInterval = null;
+let mode = 'breath';
+
+// Breathing pattern: inhale 4, hold 4, exhale 6, hold 2 (box-ish)
+const PHASES = [
+  { name: 'Inhale',  duration: 4, word: 'inhale',  scale: 1.18, label: 'Breathe',    textClass: '' },
+  { name: 'Hold',    duration: 4, word: 'hold',    scale: 1.18, label: 'Hold',       textClass: 'hold' },
+  { name: 'Exhale',  duration: 6, word: 'exhale',  scale: 0.88, label: 'Release',    textClass: '' },
+  { name: 'Rest',    duration: 2, word: 'rest',    scale: 0.88, label: 'Rest',       textClass: '' },
+];
+
+let phaseIdx = 0;
+let phaseCount = 0;
+let phaseInterval = null;
+
+const GROUNDING = [
+  "Notice 5 things you can see around you.",
+  "Feel your feet flat on the floor.",
+  "Take a slow breath in through your nose.",
+  "Relax your shoulders away from your ears.",
+  "Notice 4 things you can physically feel.",
+  "Let your jaw unclench. Soften your face.",
+  "Think of one word that describes how you want to feel this afternoon.",
+  "Notice 3 sounds you can hear right now.",
+  "Rest your hands in your lap. Feel their weight.",
+  "Picture somewhere that makes you feel calm.",
+];
+
+const FOCUS_PROMPTS = [
+  "What is one goal you have for this afternoon?",
+  "Think of one person who believes in you.",
+  "What is one thing you're proud of from today?",
+  "What does a good afternoon look like for you?",
+  "Choose one word as your intention for the rest of the day.",
+];
+
+let groundIdx = 0;
+let groundInterval = null;
+
+// ── Session timer ──────────────────────────────────────────────────
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+function startSession() {
+  remaining = totalSeconds;
+  updateTimerDisplay();
+  document.getElementById('progressBar').style.width = '100%';
+  sessionInterval = setInterval(() => {
+    remaining--;
+    updateTimerDisplay();
+    const pct = (remaining / totalSeconds) * 100;
+    document.getElementById('progressBar').style.width = pct + '%';
+    if (remaining <= 30) document.getElementById('sessionTimer').classList.add('urgent');
+    if (remaining <= 0) endSession();
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  document.getElementById('sessionTimer').textContent = formatTime(remaining);
+}
+
+function endSession() {
+  clearAll();
+  document.getElementById('doneScreen').classList.add('show');
+}
+
+function restart() {
+  document.getElementById('doneScreen').classList.remove('show');
+  document.getElementById('sessionTimer').classList.remove('urgent');
+  phaseIdx = 0;
+  phaseCount = 0;
+  groundIdx = 0;
+  startSession();
+  setMode(mode);
+}
+
+// ── Breathing mode ─────────────────────────────────────────────────
+function startBreathing() {
+  runPhase();
+}
+
+function runPhase() {
+  const ph = PHASES[phaseIdx];
+  phaseCount = ph.duration;
+  updateOrb(ph, phaseCount);
+  setOrbScale(ph.scale, ph.duration);
+
+  phaseInterval = setInterval(() => {
+    phaseCount--;
+    if (phaseCount <= 0) {
+      clearInterval(phaseInterval);
+      phaseIdx = (phaseIdx + 1) % PHASES.length;
+      runPhase();
+    } else {
+      document.getElementById('orbCount').textContent = phaseCount;
+    }
+  }, 1000);
+}
+
+function updateOrb(ph, count) {
+  const el = document.getElementById('orbCount');
+  const wd = document.getElementById('orbWord');
+  const lb = document.getElementById('phaseLabel');
+  el.textContent = count;
+  el.className = 'orb-count ' + (ph.textClass || '');
+  wd.textContent = ph.word;
+  lb.textContent = ph.label;
+}
+
+function setOrbScale(scale, duration) {
+  const orb = document.getElementById('orb');
+  orb.style.transition = `transform ${duration}s ease-in-out`;
+  orb.style.transform = `scale(${scale})`;
+}
+
+// ── Grounding mode ─────────────────────────────────────────────────
+function startGrounding() {
+  document.getElementById('phaseLabel').textContent = 'Grounding';
+  document.getElementById('orbCount').textContent = '✦';
+  document.getElementById('orbCount').className = 'orb-count';
+  document.getElementById('orbWord').textContent = 'focus';
+  document.getElementById('orb').style.transform = 'scale(1)';
+  document.getElementById('orb').style.transition = 'transform 3s ease-in-out';
+  showGrounding(GROUNDING[groundIdx]);
+  groundInterval = setInterval(() => {
+    groundIdx = (groundIdx + 1) % GROUNDING.length;
+    showGrounding(GROUNDING[groundIdx]);
+  }, 8000);
+}
+
+function showGrounding(text) {
+  const el = document.getElementById('groundingText');
+  el.style.opacity = 0;
+  setTimeout(() => {
+    el.textContent = text;
+    el.style.opacity = 1;
+  }, 500);
+}
+
+// ── Focus mode ─────────────────────────────────────────────────────
+function startFocus() {
+  document.getElementById('phaseLabel').textContent = 'Reflect';
+  document.getElementById('orbCount').textContent = '◈';
+  document.getElementById('orbCount').className = 'orb-count';
+  document.getElementById('orbWord').textContent = 'reflect';
+  document.getElementById('orb').style.transform = 'scale(1.05)';
+  document.getElementById('orb').style.transition = 'transform 4s ease-in-out';
+  let fi = 0;
+  showGrounding(FOCUS_PROMPTS[fi]);
+  groundInterval = setInterval(() => {
+    fi = (fi + 1) % FOCUS_PROMPTS.length;
+    showGrounding(FOCUS_PROMPTS[fi]);
+  }, 9000);
+}
+
+// ── Mode switcher ──────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  clearBreath();
+
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn' + m.charAt(0).toUpperCase() + m.slice(1)).classList.add('active');
+
+  // clear grounding text unless entering grounding/focus
+  if (m === 'breath') {
+    document.getElementById('groundingText').textContent = '';
+  }
+
+  const bt = document.getElementById('breathText');
+  if (m === 'breath') {
+    bt.textContent = 'Follow the orb. Breathe slowly.';
+    bt.classList.add('visible');
+    startBreathing();
+  } else if (m === 'ground') {
+    bt.textContent = 'Read each prompt. Pause and notice.';
+    bt.classList.add('visible');
+    startGrounding();
+  } else if (m === 'focus') {
+    bt.textContent = 'Sit with the question. There's no wrong answer.';
+    bt.classList.add('visible');
+    startFocus();
+  }
+}
+
+function clearBreath() {
+  clearInterval(phaseInterval);
+  clearInterval(groundInterval);
+  phaseIdx = 0;
+  phaseCount = 0;
+}
+
+function clearAll() {
+  clearBreath();
+  clearInterval(sessionInterval);
+}
+
+// ── Duration setter ────────────────────────────────────────────────
+function setDuration(mins, btn) {
+  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  totalSeconds = mins * 60;
+  clearAll();
+  document.getElementById('sessionTimer').classList.remove('urgent');
+  startSession();
+  setMode(mode);
+}
+
+// ── Init ───────────────────────────────────────────────────────────
+startSession();
+setMode('breath');
+</script>
+</body>
+</html>
