@@ -1109,7 +1109,8 @@ var isMuted = false;
 var masterVolume = 0.40;
 var currentSound = 'space';
 var chimeTimeout = null;
-var audioBuffers = {};
+var audioElements = {};
+var currentAudioEl = null;
 
 var SOUND_FILES = {
   space:  'dreamscape.m4a',
@@ -1153,29 +1154,22 @@ function buildAmbient() {
 }
 
 function loadAndPlay(soundName, filePath) {
-  if (audioBuffers[soundName]) {
-    playFileAmbient(audioBuffers[soundName]);
+  if (audioElements[soundName]) {
+    var cached = audioElements[soundName];
+    cached.node.connect(masterGain);
+    currentAudioEl = cached.audio;
+    cached.audio.play().catch(function(e) { console.warn('Audio play failed:', e); });
+    ambientNodes = [cached.node];
     return;
   }
-  fetch(filePath)
-    .then(function(r) { return r.arrayBuffer(); })
-    .then(function(ab) { return audioCtx.decodeAudioData(ab); })
-    .then(function(buf) {
-      audioBuffers[soundName] = buf;
-      if (currentSound === soundName) playFileAmbient(buf);
-    })
-    .catch(function(e) {
-      console.warn('Audio load failed:', filePath, e);
-    });
-}
-
-function playFileAmbient(buffer) {
-  var src = audioCtx.createBufferSource();
-  src.buffer = buffer;
-  src.loop = true;
-  src.connect(masterGain);
-  src.start();
-  ambientNodes = [src];
+  var audio = new Audio(filePath);
+  audio.loop = true;
+  var node = audioCtx.createMediaElementSource(audio);
+  node.connect(masterGain);
+  audioElements[soundName] = { audio: audio, node: node };
+  currentAudioEl = audio;
+  ambientNodes = [node];
+  audio.play().catch(function(e) { console.warn('Audio load failed:', filePath, e); });
 }
 
 // ── Space Calm (original ambient) ──────────────────────────────
@@ -1437,6 +1431,7 @@ function buildRain() {
 
 function stopAmbient() {
   if (chimeTimeout) { clearTimeout(chimeTimeout); chimeTimeout = null; }
+  if (currentAudioEl) { currentAudioEl.pause(); currentAudioEl = null; }
   ambientNodes.forEach(function(n) {
     try { if (n.stop) n.stop(); n.disconnect(); } catch(e) {}
   });
