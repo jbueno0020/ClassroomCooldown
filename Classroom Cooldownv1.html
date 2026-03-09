@@ -1154,22 +1154,27 @@ function buildAmbient() {
 }
 
 function loadAndPlay(soundName, filePath) {
+  var audio;
   if (audioElements[soundName]) {
-    var cached = audioElements[soundName];
-    cached.node.connect(masterGain);
-    currentAudioEl = cached.audio;
-    cached.audio.play().catch(function(e) { console.warn('Audio play failed:', e); });
-    ambientNodes = [cached.node];
-    return;
+    audio = audioElements[soundName];
+  } else {
+    audio = new Audio(filePath);
+    audio.loop = true;
+    audioElements[soundName] = audio;
   }
-  var audio = new Audio(filePath);
-  audio.loop = true;
-  var node = audioCtx.createMediaElementSource(audio);
-  node.connect(masterGain);
-  audioElements[soundName] = { audio: audio, node: node };
   currentAudioEl = audio;
-  ambientNodes = [node];
+  ambientNodes = [];
+  // Fade in over 3 seconds to match Web Audio API sounds
+  audio.volume = 0;
   audio.play().catch(function(e) { console.warn('Audio load failed:', filePath, e); });
+  var targetVol = isMuted ? 0 : masterVolume;
+  var fadeSteps = 30;
+  var step = 0;
+  var fadeIn = setInterval(function() {
+    step++;
+    audio.volume = Math.min(1, targetVol * (step / fadeSteps));
+    if (step >= fadeSteps) clearInterval(fadeIn);
+  }, 100);
 }
 
 // ── Space Calm (original ambient) ──────────────────────────────
@@ -1445,6 +1450,7 @@ function toggleMute() {
     masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
     masterGain.gain.setTargetAtTime(isMuted ? 0 : masterVolume, audioCtx.currentTime, 0.12);
   }
+  if (currentAudioEl) currentAudioEl.volume = isMuted ? 0 : masterVolume;
   updateVolUI();
 }
 
@@ -1454,6 +1460,7 @@ function setVolume(val) {
     masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
     masterGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.06);
   }
+  if (currentAudioEl && !isMuted) currentAudioEl.volume = masterVolume;
 }
 
 function updateVolUI() {
