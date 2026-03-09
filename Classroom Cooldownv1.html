@@ -1109,6 +1109,14 @@ var isMuted = false;
 var masterVolume = 0.40;
 var currentSound = 'space';
 var chimeTimeout = null;
+var audioBuffers = {};
+
+var SOUND_FILES = {
+  space:  'dreamscape.m4a',
+  waves:  'Ocean Waves.wav',
+  creek:  'Creek Stream Loop.wav',
+  chimes: 'Wind Chime.m4a'
+};
 
 function initAudio() {
   if (audioCtx) return;
@@ -1134,11 +1142,40 @@ function buildAmbient() {
   masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
   masterGain.gain.linearRampToValueAtTime(isMuted ? 0 : masterVolume, audioCtx.currentTime + 3);
 
-  if (currentSound === 'waves') buildBeachWaves();
-  else if (currentSound === 'creek') buildCreek();
-  else if (currentSound === 'chimes') buildWindChimes();
-  else if (currentSound === 'rain') buildRain();
-  else buildSpaceCalm();
+  if (currentSound === 'rain') { buildRain(); return; }
+
+  var file = SOUND_FILES[currentSound];
+  if (file) {
+    loadAndPlay(currentSound, file);
+  } else {
+    buildRain();
+  }
+}
+
+function loadAndPlay(soundName, filePath) {
+  if (audioBuffers[soundName]) {
+    playFileAmbient(audioBuffers[soundName]);
+    return;
+  }
+  fetch(filePath)
+    .then(function(r) { return r.arrayBuffer(); })
+    .then(function(ab) { return audioCtx.decodeAudioData(ab); })
+    .then(function(buf) {
+      audioBuffers[soundName] = buf;
+      if (currentSound === soundName) playFileAmbient(buf);
+    })
+    .catch(function(e) {
+      console.warn('Audio load failed:', filePath, e);
+    });
+}
+
+function playFileAmbient(buffer) {
+  var src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  src.loop = true;
+  src.connect(masterGain);
+  src.start();
+  ambientNodes = [src];
 }
 
 // ── Space Calm (original ambient) ──────────────────────────────
