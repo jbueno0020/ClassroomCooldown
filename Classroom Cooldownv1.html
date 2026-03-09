@@ -791,8 +791,6 @@ function runPhase() {
   phaseCount = ph.duration;
   updateOrb(ph, phaseCount);
   setOrbScaleAndGlow(ph);
-  playBreathCue(ph);
-
   if (phaseIdx === 0) {
     breathCycles++;
     if (breathCycles > 1) document.getElementById('cycleCounter').textContent = 'Cycle '+breathCycles;
@@ -971,7 +969,7 @@ function clearBreath() {
   phaseInterval = null; groundInterval = null;
   phaseIdx = 0; phaseCount = 0;
   breathCycles = 0; currentPromptList = null;
-  stopBreathCue();
+
 }
 
 function clearAll() {
@@ -988,7 +986,7 @@ function pauseSession() {
   clearInterval(sessionInterval);
   clearInterval(phaseInterval);
   clearInterval(groundInterval);
-  stopBreathCue();
+
   var orb = document.getElementById('orb');
   orb.style.transition = 'transform 0.9s ease-in-out, box-shadow 0.9s ease-in-out';
   orb.classList.add('paused');
@@ -1107,8 +1105,6 @@ function revealIntention() {
 var audioCtx = null;
 var masterGain = null;
 var ambientNodes = [];
-var breathCueOsc = null;
-var breathCueGain = null;
 var isMuted = false;
 var masterVolume = 0.40;
 var currentSound = 'space';
@@ -1382,55 +1378,6 @@ function stopAmbient() {
     try { if (n.stop) n.stop(); n.disconnect(); } catch(e) {}
   });
   ambientNodes = [];
-}
-
-// — Breathing cue tones (layered on top of ambient) —
-function playBreathCue(ph) {
-  if (!audioCtx || !masterGain) return;
-  stopBreathCue();
-  if (ph.name === 'Rest') return;
-
-  var now = audioCtx.currentTime;
-  var dur = ph.duration;
-  breathCueOsc = audioCtx.createOscillator();
-  breathCueGain = audioCtx.createGain();
-  breathCueGain.gain.setValueAtTime(0, now);
-  breathCueOsc.type = ph.name === 'Hold' ? 'sine' : 'triangle';
-
-  if (ph.name === 'Inhale') {
-    breathCueOsc.frequency.setValueAtTime(220, now);
-    breathCueOsc.frequency.linearRampToValueAtTime(440, now+dur);
-    breathCueGain.gain.linearRampToValueAtTime(0.065, now+0.5);
-    breathCueGain.gain.setValueAtTime(0.065, now+dur-0.5);
-    breathCueGain.gain.linearRampToValueAtTime(0, now+dur);
-  } else if (ph.name === 'Hold') {
-    breathCueOsc.frequency.setValueAtTime(440, now);
-    breathCueGain.gain.linearRampToValueAtTime(0.03, now+0.5);
-    breathCueGain.gain.setValueAtTime(0.03, now+dur-0.4);
-    breathCueGain.gain.linearRampToValueAtTime(0, now+dur);
-  } else if (ph.name === 'Exhale') {
-    breathCueOsc.frequency.setValueAtTime(440, now);
-    breathCueOsc.frequency.linearRampToValueAtTime(220, now+dur);
-    breathCueGain.gain.linearRampToValueAtTime(0.05, now+0.4);
-    breathCueGain.gain.setValueAtTime(0.05, now+dur-0.6);
-    breathCueGain.gain.linearRampToValueAtTime(0, now+dur);
-  }
-
-  breathCueOsc.connect(breathCueGain);
-  breathCueGain.connect(masterGain);
-  breathCueOsc.start(now);
-  breathCueOsc.stop(now+dur+0.15);
-}
-
-function stopBreathCue() {
-  if (breathCueOsc) {
-    try { breathCueOsc.stop(audioCtx ? audioCtx.currentTime+0.08 : 0); breathCueOsc.disconnect(); } catch(e) {}
-    breathCueOsc = null;
-  }
-  if (breathCueGain) {
-    try { breathCueGain.disconnect(); } catch(e) {}
-    breathCueGain = null;
-  }
 }
 
 // Volume controls
