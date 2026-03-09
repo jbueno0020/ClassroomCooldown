@@ -590,7 +590,6 @@ html, body {
     <button class="sound-btn" id="sndWaves" onclick="setSound('waves')" title="Beach Waves">&#127754;</button>
     <button class="sound-btn" id="sndCreek" onclick="setSound('creek')" title="Running Creek">&#128167;</button>
     <button class="sound-btn" id="sndChimes" onclick="setSound('chimes')" title="Wind Chimes">&#127904;</button>
-    <button class="sound-btn" id="sndRain" onclick="setSound('rain')" title="Rain">&#127783;</button>
   </div>
   <div class="vol-row">
     <button class="vol-btn" id="btnMute" onclick="toggleMute()" title="Mute">&#9834;</button>
@@ -1102,15 +1101,12 @@ function revealIntention() {
 }
 
 // ══ Audio System ═════════════════════════════════════════════════
-var audioCtx = null;
-var masterGain = null;
-var ambientNodes = [];
 var isMuted = false;
 var masterVolume = 0.40;
 var currentSound = 'space';
-var chimeTimeout = null;
 var audioElements = {};
 var currentAudioEl = null;
+var audioReady = false;
 
 var SOUND_FILES = {
   space:  'dreamscape.m4a',
@@ -1119,347 +1115,74 @@ var SOUND_FILES = {
   chimes: 'wind-chime.m4a'
 };
 
+// Must be called synchronously from a user gesture.
+// Pre-creates and unlocks all audio elements for iOS Safari,
+// which requires play() to be called within the gesture call stack.
 function initAudio() {
-  if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0; // will fade in
-  masterGain.connect(audioCtx.destination);
+  if (audioReady) return;
+  audioReady = true;
+  Object.keys(SOUND_FILES).forEach(function(name) {
+    var audio = new Audio(SOUND_FILES[name]);
+    audio.loop = true;
+    audio.volume = 0;
+    var p = audio.play();
+    if (p !== undefined) {
+      p.then(function() { audio.pause(); audio.currentTime = 0; }).catch(function() {});
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    audioElements[name] = audio;
+  });
 }
 
 function setSound(name) {
   currentSound = name;
   document.querySelectorAll('.sound-btn').forEach(function(b) { b.classList.remove('active'); });
-  var idMap = { space:'sndSpace', waves:'sndWaves', creek:'sndCreek', chimes:'sndChimes', rain:'sndRain' };
+  var idMap = { space:'sndSpace', waves:'sndWaves', creek:'sndCreek', chimes:'sndChimes' };
   var el = document.getElementById(idMap[name]);
   if (el) el.classList.add('active');
-  if (audioCtx) { stopAmbient(); buildAmbient(); }
+  if (audioReady) { stopAmbient(); buildAmbient(); }
 }
 
 function buildAmbient() {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-  masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
-  masterGain.gain.linearRampToValueAtTime(isMuted ? 0 : masterVolume, audioCtx.currentTime + 3);
-
-  if (currentSound === 'rain') { buildRain(); return; }
-
   var file = SOUND_FILES[currentSound];
-  if (file) {
-    loadAndPlay(currentSound, file);
-  } else {
-    buildRain();
-  }
+  if (file) loadAndPlay(currentSound, file);
 }
 
 function loadAndPlay(soundName, filePath) {
-  var audio;
-  if (audioElements[soundName]) {
-    audio = audioElements[soundName];
-  } else {
+  var audio = audioElements[soundName];
+  if (!audio) {
     audio = new Audio(filePath);
     audio.loop = true;
     audioElements[soundName] = audio;
   }
   currentAudioEl = audio;
-  ambientNodes = [];
-  // Fade in over 3 seconds to match Web Audio API sounds
+  audio.currentTime = 0;
   audio.volume = 0;
-  audio.play().catch(function(e) { console.warn('Audio load failed:', filePath, e); });
+  audio.play().catch(function(e) { console.warn('Audio play failed:', soundName, e); });
   var targetVol = isMuted ? 0 : masterVolume;
-  var fadeSteps = 30;
   var step = 0;
   var fadeIn = setInterval(function() {
     step++;
-    audio.volume = Math.min(1, targetVol * (step / fadeSteps));
-    if (step >= fadeSteps) clearInterval(fadeIn);
+    audio.volume = Math.min(1, targetVol * step / 30);
+    if (step >= 30) clearInterval(fadeIn);
   }, 100);
 }
 
-// ── Space Calm (original ambient) ──────────────────────────────
-function buildSpaceCalm() {
-  var now = audioCtx.currentTime;
-
-  // — White noise: soft filtered —
-  var bufLen = audioCtx.sampleRate * 4;
-  var noiseBuf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
-  var nd = noiseBuf.getChannelData(0);
-  for (var ni = 0; ni < bufLen; ni++) nd[ni] = Math.random()*2-1;
-  var noiseSrc = audioCtx.createBufferSource();
-  noiseSrc.buffer = noiseBuf; noiseSrc.loop = true;
-  var noiseLP = audioCtx.createBiquadFilter();
-  noiseLP.type = 'lowpass'; noiseLP.frequency.value = 340; noiseLP.Q.value = 0.4;
-  var noiseGain = audioCtx.createGain(); noiseGain.gain.value = 0.055;
-  noiseSrc.connect(noiseLP); noiseLP.connect(noiseGain); noiseGain.connect(masterGain);
-  noiseSrc.start();
-
-  // — Binaural drone —
-  var droneL = audioCtx.createOscillator(); droneL.type = 'sine'; droneL.frequency.value = 110;
-  var panL = audioCtx.createStereoPanner(); panL.pan.value = -1;
-  var droneGainL = audioCtx.createGain(); droneGainL.gain.value = 0.038;
-  droneL.connect(droneGainL); droneGainL.connect(panL); panL.connect(masterGain); droneL.start();
-
-  var droneR = audioCtx.createOscillator(); droneR.type = 'sine'; droneR.frequency.value = 150;
-  var panR = audioCtx.createStereoPanner(); panR.pan.value = 1;
-  var droneGainR = audioCtx.createGain(); droneGainR.gain.value = 0.038;
-  droneR.connect(droneGainR); droneGainR.connect(panR); panR.connect(masterGain); droneR.start();
-
-  var ampLfo = audioCtx.createOscillator();
-  ampLfo.type = 'sine'; ampLfo.frequency.value = 0.09;
-  var ampLfoGain = audioCtx.createGain(); ampLfoGain.gain.value = 0.009;
-  ampLfo.connect(ampLfoGain);
-  ampLfoGain.connect(droneGainL.gain);
-  ampLfoGain.connect(droneGainR.gain);
-  ampLfo.start();
-
-  // — Shimmer —
-  var sh1 = audioCtx.createOscillator(); sh1.type = 'triangle'; sh1.frequency.value = 880;
-  var sg1 = audioCtx.createGain(); sg1.gain.value = 0.011;
-  var sl1 = audioCtx.createOscillator(); sl1.type = 'sine'; sl1.frequency.value = 0.06;
-  var sld1 = audioCtx.createGain(); sld1.gain.value = 18;
-  sl1.connect(sld1); sld1.connect(sh1.frequency);
-  sh1.connect(sg1); sg1.connect(masterGain); sh1.start(); sl1.start();
-
-  var sh2 = audioCtx.createOscillator(); sh2.type = 'triangle'; sh2.frequency.value = 1210;
-  var sg2 = audioCtx.createGain(); sg2.gain.value = 0.007;
-  var sl2 = audioCtx.createOscillator(); sl2.type = 'sine'; sl2.frequency.value = 0.04;
-  var sld2 = audioCtx.createGain(); sld2.gain.value = 28;
-  sl2.connect(sld2); sld2.connect(sh2.frequency);
-  sh2.connect(sg2); sg2.connect(masterGain); sh2.start(); sl2.start();
-
-  var sh3 = audioCtx.createOscillator(); sh3.type = 'triangle'; sh3.frequency.value = 1540;
-  var sg3 = audioCtx.createGain(); sg3.gain.value = 0.004;
-  var sl3 = audioCtx.createOscillator(); sl3.type = 'sine'; sl3.frequency.value = 0.05;
-  var sld3 = audioCtx.createGain(); sld3.gain.value = 22;
-  sl3.connect(sld3); sld3.connect(sh3.frequency);
-  sh3.connect(sg3); sg3.connect(masterGain); sh3.start(); sl3.start();
-
-  ambientNodes = [noiseSrc, droneL, droneR, ampLfo, sh1, sh2, sh3,
-    sl1, sl2, sl3, noiseLP, noiseGain, droneGainL, droneGainR,
-    ampLfoGain, sg1, sg2, sg3, sld1, sld2, sld3, panL, panR];
-}
-
-// ── Beach Waves ─────────────────────────────────────────────────
-function buildBeachWaves() {
-  var bufLen = audioCtx.sampleRate * 8;
-  var buf = audioCtx.createBuffer(2, bufLen, audioCtx.sampleRate);
-  for (var ch = 0; ch < 2; ch++) {
-    var d = buf.getChannelData(ch);
-    var lastOut = 0;
-    for (var i = 0; i < bufLen; i++) {
-      var w = Math.random() * 2 - 1;
-      lastOut = (lastOut + 0.02 * w) / 1.02;
-      d[i] = lastOut * 3.5;
-    }
-  }
-  var waveSrc = audioCtx.createBufferSource();
-  waveSrc.buffer = buf; waveSrc.loop = true;
-  var waveLp = audioCtx.createBiquadFilter();
-  waveLp.type = 'lowpass'; waveLp.frequency.value = 900; waveLp.Q.value = 0.5;
-  var waveGain = audioCtx.createGain(); waveGain.gain.value = 0.30;
-  // Wave swell LFO (~7s cycle)
-  var swellLfo = audioCtx.createOscillator();
-  swellLfo.type = 'sine'; swellLfo.frequency.value = 0.14;
-  var swellLfoGain = audioCtx.createGain(); swellLfoGain.gain.value = 0.20;
-  swellLfo.connect(swellLfoGain); swellLfoGain.connect(waveGain.gain);
-
-  // Hiss layer — receding water
-  var hissBufLen = audioCtx.sampleRate * 3;
-  var hissBuf = audioCtx.createBuffer(1, hissBufLen, audioCtx.sampleRate);
-  var hd = hissBuf.getChannelData(0);
-  for (var j = 0; j < hissBufLen; j++) hd[j] = Math.random() * 2 - 1;
-  var hissSrc = audioCtx.createBufferSource();
-  hissSrc.buffer = hissBuf; hissSrc.loop = true;
-  var hissHp = audioCtx.createBiquadFilter();
-  hissHp.type = 'highpass'; hissHp.frequency.value = 3000; hissHp.Q.value = 0.3;
-  var hissGain = audioCtx.createGain(); hissGain.gain.value = 0.018;
-  var hissLfo = audioCtx.createOscillator();
-  hissLfo.type = 'sine'; hissLfo.frequency.value = 0.13;
-  var hissLfoGain = audioCtx.createGain(); hissLfoGain.gain.value = 0.012;
-  hissLfo.connect(hissLfoGain); hissLfoGain.connect(hissGain.gain);
-
-  waveSrc.connect(waveLp); waveLp.connect(waveGain); waveGain.connect(masterGain);
-  hissSrc.connect(hissHp); hissHp.connect(hissGain); hissGain.connect(masterGain);
-  waveSrc.start(); hissSrc.start(); swellLfo.start(); hissLfo.start();
-
-  ambientNodes = [waveSrc, waveLp, waveGain, swellLfo, swellLfoGain,
-    hissSrc, hissHp, hissGain, hissLfo, hissLfoGain];
-}
-
-// ── Running Creek ────────────────────────────────────────────────
-function buildCreek() {
-  // Pink noise base (more natural water spectrum than white noise)
-  var bufLen = audioCtx.sampleRate * 8;
-  var buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
-  var d = buf.getChannelData(0);
-  var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-  for (var i = 0; i < bufLen; i++) {
-    var w = Math.random() * 2 - 1;
-    b0 = 0.99886*b0 + w*0.0555179; b1 = 0.99332*b1 + w*0.0750759;
-    b2 = 0.96900*b2 + w*0.1538520; b3 = 0.86650*b3 + w*0.3104856;
-    b4 = 0.55000*b4 + w*0.5329522; b5 = -0.7616*b5 - w*0.0168980;
-    d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
-    b6 = w * 0.115926;
-  }
-  var src = audioCtx.createBufferSource();
-  src.buffer = buf; src.loop = true;
-
-  // Layer 1: Low gurgle — water tumbling over rocks (~400 Hz)
-  var bp1 = audioCtx.createBiquadFilter();
-  bp1.type = 'bandpass'; bp1.frequency.value = 420; bp1.Q.value = 2.2;
-  var g1 = audioCtx.createGain(); g1.gain.value = 0.34;
-  var alfo1 = audioCtx.createOscillator(); // amplitude babble
-  alfo1.type = 'sine'; alfo1.frequency.value = 4.3;
-  var alfo1g = audioCtx.createGain(); alfo1g.gain.value = 0.13;
-  alfo1.connect(alfo1g); alfo1g.connect(g1.gain);
-  var flfo1 = audioCtx.createOscillator(); // pitch drift
-  flfo1.type = 'sine'; flfo1.frequency.value = 0.7;
-  var flfo1g = audioCtx.createGain(); flfo1g.gain.value = 85;
-  flfo1.connect(flfo1g); flfo1g.connect(bp1.frequency);
-
-  // Layer 2: Mid splash — water breaking surface (~900 Hz)
-  var bp2 = audioCtx.createBiquadFilter();
-  bp2.type = 'bandpass'; bp2.frequency.value = 900; bp2.Q.value = 1.6;
-  var g2 = audioCtx.createGain(); g2.gain.value = 0.24;
-  var alfo2 = audioCtx.createOscillator();
-  alfo2.type = 'sine'; alfo2.frequency.value = 6.1;
-  var alfo2g = audioCtx.createGain(); alfo2g.gain.value = 0.09;
-  alfo2.connect(alfo2g); alfo2g.connect(g2.gain);
-  var flfo2 = audioCtx.createOscillator();
-  flfo2.type = 'sine'; flfo2.frequency.value = 1.1;
-  var flfo2g = audioCtx.createGain(); flfo2g.gain.value = 210;
-  flfo2.connect(flfo2g); flfo2g.connect(bp2.frequency);
-
-  // Layer 3: High shimmer — surface ripple and spray (~2200 Hz)
-  var bp3 = audioCtx.createBiquadFilter();
-  bp3.type = 'bandpass'; bp3.frequency.value = 2200; bp3.Q.value = 1.1;
-  var g3 = audioCtx.createGain(); g3.gain.value = 0.11;
-  var alfo3 = audioCtx.createOscillator();
-  alfo3.type = 'sine'; alfo3.frequency.value = 9.2;
-  var alfo3g = audioCtx.createGain(); alfo3g.gain.value = 0.05;
-  alfo3.connect(alfo3g); alfo3g.connect(g3.gain);
-
-  src.connect(bp1); bp1.connect(g1); g1.connect(masterGain);
-  src.connect(bp2); bp2.connect(g2); g2.connect(masterGain);
-  src.connect(bp3); bp3.connect(g3); g3.connect(masterGain);
-  src.start();
-  alfo1.start(); flfo1.start(); alfo2.start(); flfo2.start(); alfo3.start();
-
-  ambientNodes = [src, bp1, g1, alfo1, alfo1g, flfo1, flfo1g,
-    bp2, g2, alfo2, alfo2g, flfo2, flfo2g,
-    bp3, g3, alfo3, alfo3g];
-}
-
-// ── Wind Chimes ──────────────────────────────────────────────────
-function buildWindChimes() {
-  var chimeFreqs = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51];
-
-  // Soft breeze background
-  var bufLen = audioCtx.sampleRate * 4;
-  var buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
-  var d = buf.getChannelData(0);
-  for (var i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
-  var breeze = audioCtx.createBufferSource();
-  breeze.buffer = buf; breeze.loop = true;
-  var breezeLp = audioCtx.createBiquadFilter();
-  breezeLp.type = 'lowpass'; breezeLp.frequency.value = 180;
-  var breezeGain = audioCtx.createGain(); breezeGain.gain.value = 0.025;
-  breeze.connect(breezeLp); breezeLp.connect(breezeGain); breezeGain.connect(masterGain);
-  breeze.start();
-  ambientNodes = [breeze, breezeLp, breezeGain];
-
-  function playChime() {
-    if (!audioCtx || ambientNodes.length === 0) return;
-    var freq = chimeFreqs[Math.floor(Math.random() * chimeFreqs.length)];
-    var now = audioCtx.currentTime;
-
-    var osc = audioCtx.createOscillator();
-    var g = audioCtx.createGain();
-    osc.type = 'sine'; osc.frequency.value = freq;
-    g.gain.setValueAtTime(0.001, now);
-    g.gain.linearRampToValueAtTime(0.09, now + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 3.2);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(now); osc.stop(now + 3.3);
-
-    // Inharmonic partial for bell shimmer
-    var osc2 = audioCtx.createOscillator();
-    var g2 = audioCtx.createGain();
-    osc2.type = 'sine'; osc2.frequency.value = freq * 2.756;
-    g2.gain.setValueAtTime(0.001, now);
-    g2.gain.linearRampToValueAtTime(0.032, now + 0.012);
-    g2.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
-    osc2.connect(g2); g2.connect(masterGain);
-    osc2.start(now); osc2.stop(now + 1.7);
-
-    var nextIn = 1200 + Math.random() * 3800;
-    chimeTimeout = setTimeout(playChime, nextIn);
-  }
-
-  chimeTimeout = setTimeout(playChime, 600 + Math.random() * 1000);
-}
-
-// ── Rain ─────────────────────────────────────────────────────────
-function buildRain() {
-  // Pink noise approximation
-  var bufLen = audioCtx.sampleRate * 8;
-  var buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
-  var d = buf.getChannelData(0);
-  var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-  for (var i = 0; i < bufLen; i++) {
-    var w = Math.random() * 2 - 1;
-    b0 = 0.99886*b0 + w*0.0555179; b1 = 0.99332*b1 + w*0.0750759;
-    b2 = 0.96900*b2 + w*0.1538520; b3 = 0.86650*b3 + w*0.3104856;
-    b4 = 0.55000*b4 + w*0.5329522; b5 = -0.7616*b5 - w*0.0168980;
-    d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
-    b6 = w * 0.115926;
-  }
-  var src = audioCtx.createBufferSource();
-  src.buffer = buf; src.loop = true;
-
-  var lp = audioCtx.createBiquadFilter();
-  lp.type = 'lowpass'; lp.frequency.value = 4500; lp.Q.value = 0.5;
-  var gainNode = audioCtx.createGain(); gainNode.gain.value = 0.32;
-
-  // Gentle intensity swell
-  var lfo = audioCtx.createOscillator();
-  lfo.type = 'sine'; lfo.frequency.value = 0.04;
-  var lfoGain = audioCtx.createGain(); lfoGain.gain.value = 0.04;
-  lfo.connect(lfoGain); lfoGain.connect(gainNode.gain);
-
-  src.connect(lp); lp.connect(gainNode); gainNode.connect(masterGain);
-  src.start(); lfo.start();
-
-  ambientNodes = [src, lp, gainNode, lfo, lfoGain];
-}
-
 function stopAmbient() {
-  if (chimeTimeout) { clearTimeout(chimeTimeout); chimeTimeout = null; }
   if (currentAudioEl) { currentAudioEl.pause(); currentAudioEl = null; }
-  ambientNodes.forEach(function(n) {
-    try { if (n.stop) n.stop(); n.disconnect(); } catch(e) {}
-  });
-  ambientNodes = [];
 }
 
 // Volume controls
 function toggleMute() {
   isMuted = !isMuted;
-  if (masterGain && audioCtx) {
-    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-    masterGain.gain.setTargetAtTime(isMuted ? 0 : masterVolume, audioCtx.currentTime, 0.12);
-  }
   if (currentAudioEl) currentAudioEl.volume = isMuted ? 0 : masterVolume;
   updateVolUI();
 }
 
 function setVolume(val) {
-  masterVolume = val/100;
-  if (audioCtx && masterGain && !isMuted) {
-    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-    masterGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.06);
-  }
+  masterVolume = val / 100;
   if (currentAudioEl && !isMuted) currentAudioEl.volume = masterVolume;
 }
 
