@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Settle In — Classroom Cooldown</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
 <style>
@@ -60,11 +60,68 @@ html, body {
   color: var(--muted);
 }
 .session-timer {
-  font-size: 1rem; font-weight: 300;
+  font-size: 1.45rem; font-weight: 300;
   letter-spacing: 0.1em; color: var(--muted);
   font-variant-numeric: tabular-nums; transition: color 0.4s;
 }
 .session-timer.urgent { color: var(--gold); }
+.fullscreen-btn {
+  background: transparent; border: 1px solid rgba(212,232,224,0.12);
+  color: var(--muted); font-size: 0.9rem;
+  width: 34px; height: 34px; border-radius: 8px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: color 0.2s, border-color 0.2s; flex-shrink: 0;
+}
+.fullscreen-btn:hover { color: var(--teal); border-color: rgba(62,207,178,0.4); }
+/* Keyboard hint tooltip */
+.kb-hint-btn {
+  background: transparent; border: 1px solid rgba(212,232,224,0.12);
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem; font-weight: 400;
+  width: 34px; height: 34px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: color 0.2s, border-color 0.2s; position: relative;
+}
+.kb-hint-btn:hover { color: var(--teal); border-color: rgba(62,207,178,0.4); }
+.kb-hint-popup {
+  display: none; position: absolute; top: calc(100% + 10px); right: 0;
+  background: rgba(9,21,38,0.95); border: 1px solid rgba(62,207,178,0.2);
+  border-radius: 10px; padding: 14px 18px; z-index: 100;
+  white-space: nowrap; backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.kb-hint-popup.show { display: block; }
+.kb-hint-popup table { border-collapse: collapse; }
+.kb-hint-popup td { padding: 4px 10px 4px 0; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.06em; }
+.kb-hint-popup td:first-child {
+  font-family: 'DM Sans', monospace; color: var(--teal);
+  background: rgba(62,207,178,0.08); border-radius: 4px;
+  padding: 2px 8px; text-align: center; font-size: 0.68rem;
+}
+/* Done screen auto-reset bar */
+.auto-reset-bar {
+  width: 220px; height: 2px;
+  background: rgba(62,207,178,0.15); border-radius: 2px;
+  overflow: hidden; margin-top: 4px;
+}
+.auto-reset-fill {
+  height: 100%; width: 100%;
+  background: var(--teal);
+  transition: width linear;
+}
+.auto-reset-label {
+  font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(212,232,224,0.3); margin-top: 6px;
+}
+/* Mood skip link */
+.mood-skip {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(212,232,224,0.22); cursor: pointer;
+  background: none; border: none; margin-top: 18px;
+  transition: color 0.2s; text-decoration: none;
+}
+.mood-skip:hover { color: var(--muted); }
 
 /* ── Progress bar ── */
 .progress-bar-wrap {
@@ -510,6 +567,7 @@ html, body {
     <span>Overwhelmed</span><span></span><span>Neutral</span><span></span><span>Calm</span>
   </div>
   <div class="mood-response" id="moodResponse"></div>
+  <button class="mood-skip" onclick="skipMood()">Skip ›</button>
 </div>
 
 <!-- ── Background ── -->
@@ -525,6 +583,18 @@ html, body {
 <div class="header">
   <span class="brand">Settle In</span>
   <span class="session-timer" id="sessionTimer">5:00</span>
+  <div style="display:flex;align-items:center;gap:8px;position:relative;">
+    <button class="kb-hint-btn" id="kbHintBtn" onclick="toggleKbHint()" title="Keyboard shortcuts">?</button>
+    <div class="kb-hint-popup" id="kbHintPopup">
+      <table>
+        <tr><td>Space</td><td>Pause / Resume</td></tr>
+        <tr><td>M</td><td>Mute / Unmute</td></tr>
+        <tr><td>N</td><td>Next prompt (Grounding/Focus)</td></tr>
+        <tr><td>F</td><td>Toggle fullscreen</td></tr>
+      </table>
+    </div>
+    <button class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()" title="Toggle fullscreen">&#x26F6;</button>
+  </div>
 </div>
 
 <!-- ── Main ── -->
@@ -579,6 +649,7 @@ html, body {
   <button class="dur-btn active" onclick="setDuration(5,this)">5 min</button>
   <button class="dur-btn" onclick="setDuration(7,this)">7 min</button>
   <button class="dur-btn" onclick="setDuration(10,this)">10 min</button>
+  <button class="dur-btn" onclick="setDuration(15,this)">15 min</button>
 </div>
 
 <!-- ── Bottom actions ── -->
@@ -600,16 +671,18 @@ html, body {
 <!-- ── Done screen ── -->
 <div class="done-screen" id="doneScreen">
   <div class="done-title">You&#8217;re Ready.</div>
-  <div class="done-sub">Your mind is settled. Your body is calm.<br>Let&#8217;s have a great afternoon.</div>
+  <div class="done-sub" id="doneSub">Your mind is settled. Your body is calm.</div>
   <div class="done-stat" id="doneStat"></div>
   <div class="intention-wrap">
-    <div class="intention-prompt">One word for your afternoon:</div>
+    <div class="intention-prompt">One word for right now:</div>
     <input type="text" id="intentionInput" class="intention-input"
       placeholder="peace" maxlength="20"
       onkeydown="handleIntentionKey(event)" oninput="clearIntentionDisplay()">
     <div class="intention-display" id="intentionDisplay"></div>
   </div>
   <button class="done-restart" onclick="restart()">Go Again</button>
+  <div class="auto-reset-bar"><div class="auto-reset-fill" id="autoResetFill"></div></div>
+  <div class="auto-reset-label" id="autoResetLabel"></div>
 </div>
 
 <script>
@@ -755,15 +828,24 @@ function updateTimerDisplay() {
 function endSession() {
   clearAll();
   stopAffirmations();
+  stopAmbient();
   var mins = Math.floor(totalSeconds/60);
   var ct = breathCycles > 0
     ? mins+' min \u00b7 '+breathCycles+' breathing cycle'+(breathCycles!==1?'s':'')
     : mins+' min session complete';
   document.getElementById('doneStat').textContent = ct;
+  // Time-aware message
+  var h = new Date().getHours();
+  var greeting = h < 12 ? 'Let\u2019s have a great morning.'
+                : h < 17 ? 'Let\u2019s have a great afternoon.'
+                : 'Let\u2019s finish strong.';
+  document.getElementById('doneSub').innerHTML = 'Your mind is settled. Your body is calm.<br>' + greeting;
   document.getElementById('doneScreen').classList.add('show');
+  startAutoReset(45);
 }
 
 function restart() {
+  cancelAutoReset();
   document.getElementById('doneScreen').classList.remove('show');
   document.getElementById('sessionTimer').classList.remove('urgent');
   document.getElementById('intentionInput').value = '';
@@ -1100,6 +1182,84 @@ function revealIntention() {
   }, 5000);
 }
 
+// ══ Fullscreen ═══════════════════════════════════════════════════
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(function() {});
+  } else {
+    document.exitFullscreen().catch(function() {});
+  }
+}
+document.addEventListener('fullscreenchange', function() {
+  var btn = document.getElementById('fullscreenBtn');
+  if (btn) btn.innerHTML = document.fullscreenElement ? '&#x2715;' : '&#x26F6;';
+});
+
+// ══ Keyboard hint ════════════════════════════════════════════════
+function toggleKbHint() {
+  var popup = document.getElementById('kbHintPopup');
+  popup.classList.toggle('show');
+}
+document.addEventListener('click', function(e) {
+  var btn = document.getElementById('kbHintBtn');
+  var popup = document.getElementById('kbHintPopup');
+  if (popup && popup.classList.contains('show') && !btn.contains(e.target) && !popup.contains(e.target)) {
+    popup.classList.remove('show');
+  }
+});
+
+// ══ Auto-reset ═══════════════════════════════════════════════════
+var autoResetTimer = null;
+var autoResetInterval = null;
+function startAutoReset(seconds) {
+  var fill = document.getElementById('autoResetFill');
+  var label = document.getElementById('autoResetLabel');
+  var remaining = seconds;
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  label.textContent = 'Returning in ' + remaining + 's';
+  // Force reflow so transition starts fresh
+  fill.getBoundingClientRect();
+  fill.style.transition = 'width ' + seconds + 's linear';
+  fill.style.width = '0%';
+  autoResetInterval = setInterval(function() {
+    remaining--;
+    label.textContent = remaining > 0 ? 'Returning in ' + remaining + 's' : '';
+  }, 1000);
+  autoResetTimer = setTimeout(function() {
+    cancelAutoReset();
+    restart();
+    // Return to mood screen for next student
+    var ms = document.getElementById('moodScreen');
+    ms.style.display = '';
+    ms.style.opacity = '0';
+    setTimeout(function() { ms.style.opacity = '1'; }, 30);
+    ms.classList.remove('hidden');
+    document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
+    document.getElementById('moodResponse').style.opacity = '0';
+  }, seconds * 1000);
+}
+function cancelAutoReset() {
+  clearTimeout(autoResetTimer); autoResetTimer = null;
+  clearInterval(autoResetInterval); autoResetInterval = null;
+  var fill = document.getElementById('autoResetFill');
+  var label = document.getElementById('autoResetLabel');
+  if (fill) { fill.style.transition = 'none'; fill.style.width = '100%'; }
+  if (label) label.textContent = '';
+}
+
+// ══ Skip mood check-in ═══════════════════════════════════════════
+function skipMood() {
+  initAudio();
+  var ms = document.getElementById('moodScreen');
+  ms.classList.add('hidden');
+  setTimeout(function() { ms.style.display = 'none'; }, 950);
+  startSession();
+  setMode('breath');
+  startAffirmations();
+  buildAmbient();
+}
+
 // ══ Audio System ═════════════════════════════════════════════════
 var isMuted = false;
 var masterVolume = 0.40;
@@ -1218,6 +1378,7 @@ document.addEventListener('keydown', function(e) {
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
   else if (e.code === 'KeyN') { if (mode !== 'breath') nextPrompt(); }
   else if (e.code === 'KeyM') { toggleMute(); }
+  else if (e.code === 'KeyF') { toggleFullscreen(); }
   else if (e.code === 'Enter' && document.getElementById('doneScreen').classList.contains('show')) {
     revealIntention();
   }
@@ -1233,6 +1394,11 @@ document.getElementById('intentionInput').addEventListener('keydown', function(e
 // Mood screen is shown; session starts only after mood selection.
 // Pre-render the timer display:
 document.getElementById('sessionTimer').textContent = formatTime(totalSeconds);
+// ?mute=1 URL param: start muted
+if (new URLSearchParams(window.location.search).get('mute') === '1') {
+  isMuted = true;
+  updateVolUI();
+}
 </script>
 </body>
 </html>
