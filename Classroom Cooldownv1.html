@@ -122,7 +122,7 @@ html, body {
   color: var(--muted);
 }
 .session-timer {
-  font-size: 1.45rem; font-weight: 300;
+  font-size: 2.18rem; font-weight: 300;
   letter-spacing: 0.1em; color: var(--muted);
   font-variant-numeric: tabular-nums; transition: color 0.4s;
 }
@@ -272,7 +272,7 @@ html, body {
 }
 .orb-count {
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(2.8rem, 6.5vmin, 4.8rem);
+  font-size: clamp(4.2rem, 9.75vmin, 7.2rem);
   font-weight: 300; line-height: 1; color: var(--teal);
   text-shadow: 0 0 30px var(--teal-glow);
   font-variant-numeric: tabular-nums; transition: color 0.4s;
@@ -414,6 +414,29 @@ html, body {
 }
 .dur-btn:hover { border-color: var(--teal-glow); color: var(--teal); }
 .dur-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(62,207,178,0.08); }
+.custom-dur-row {
+  display: flex; align-items: center; gap: 5px; margin-top: 2px;
+}
+.custom-dur-input {
+  width: 48px; background: transparent;
+  border: 1px solid rgba(212,232,224,0.15); border-radius: 40px;
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem; letter-spacing: 0.12em;
+  padding: 7px 10px; text-align: center; outline: none;
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+.custom-dur-input::-webkit-outer-spin-button,
+.custom-dur-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.custom-dur-input:focus { border-color: var(--teal); color: var(--teal); }
+.custom-dur-go {
+  background: transparent; border: 1px solid rgba(212,232,224,0.15);
+  border-radius: 40px; color: var(--muted);
+  font-family: 'DM Sans', sans-serif; font-size: 0.65rem;
+  letter-spacing: 0.1em; padding: 7px 10px;
+  cursor: pointer; transition: all 0.2s;
+}
+.custom-dur-go:hover { border-color: var(--teal-glow); color: var(--teal); }
 
 /* ── Bottom actions ── */
 .bottom-actions {
@@ -755,6 +778,10 @@ html, body {
   <button class="dur-btn" onclick="setDuration(7,this)">7 min</button>
   <button class="dur-btn" onclick="setDuration(10,this)">10 min</button>
   <button class="dur-btn" onclick="setDuration(15,this)">15 min</button>
+  <div class="custom-dur-row">
+    <input class="custom-dur-input" id="customDurInput" type="number" min="1" max="60" placeholder="min" onkeydown="if(event.key==='Enter')setCustomDuration()" />
+    <button class="custom-dur-go" onclick="setCustomDuration()">Set</button>
+  </div>
 </div>
 
 <!-- ── Bottom actions ── -->
@@ -853,8 +880,8 @@ var intentionTimer = null;
 // ══ Constants ════════════════════════════════════════════════════
 var PHASES = [
   { name:'Inhale', duration:4, word:'inhale', scale:1.18, label:'Breathe', textClass:'' },
-  { name:'Hold',   duration:4, word:'hold',   scale:1.18, label:'Hold',    textClass:'hold' },
-  { name:'Exhale', duration:6, word:'exhale', scale:0.88, label:'Release', textClass:'' },
+  { name:'Hold',   duration:3, word:'hold',   scale:1.18, label:'Hold',    textClass:'hold' },
+  { name:'Exhale', duration:5, word:'exhale', scale:0.88, label:'Release', textClass:'' },
   { name:'Rest',   duration:2, word:'rest',   scale:0.88, label:'Rest',    textClass:'' },
 ];
 
@@ -1257,6 +1284,26 @@ function setDuration(mins, btn) {
   groundIdx = 0;
   startSession();
   setMode(mode);
+}
+
+function setCustomDuration() {
+  var input = document.getElementById('customDurInput');
+  var mins = parseInt(input.value, 10);
+  if (!mins || mins < 1) return;
+  if (mins > 60) mins = 60;
+  document.querySelectorAll('.dur-btn').forEach(function(b) { b.classList.remove('active'); });
+  totalSeconds = mins * 60;
+  isPaused = false;
+  document.getElementById('btnPause').textContent = 'Pause';
+  document.getElementById('btnPause').classList.remove('active');
+  document.getElementById('orb').classList.remove('paused');
+  document.getElementById('orbPause').classList.remove('show');
+  document.getElementById('sessionTimer').classList.remove('urgent');
+  clearAll();
+  groundIdx = 0;
+  startSession();
+  setMode(mode);
+  input.value = '';
 }
 
 // ══ Calm Score Arc ═══════════════════════════════════════════════
