@@ -19,6 +19,68 @@
   --muted: rgba(212,232,224,0.45);
 }
 
+/* ── Purple theme ── */
+:root[data-theme="purple"] {
+  --bg: #140d24;
+  --deep: #0d0818;
+  --teal: #a78bfa;
+  --teal-dim: rgba(167,139,250,0.12);
+  --teal-glow: rgba(167,139,250,0.35);
+  --text: #e0d4f4;
+  --muted: rgba(224,212,244,0.45);
+}
+[data-theme="purple"] .vignette {
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(13,8,24,0.72) 100%);
+}
+[data-theme="purple"] .orb {
+  background: radial-gradient(circle at 38% 36%, rgba(167,139,250,0.22) 0%, rgba(20,13,36,0.9) 65%);
+  border-color: rgba(167,139,250,0.4);
+  box-shadow: 0 0 40px rgba(167,139,250,0.18), inset 0 0 60px rgba(167,139,250,0.08);
+}
+[data-theme="purple"] .orb-ring { border-color: rgba(167,139,250,0.35); }
+[data-theme="purple"] .ctrl-btn {
+  background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.25);
+}
+[data-theme="purple"] .ctrl-btn:hover { background: rgba(167,139,250,0.16); border-color: rgba(167,139,250,0.5); }
+[data-theme="purple"] .ctrl-btn.active { background: rgba(167,139,250,0.2); border-color: var(--teal); }
+[data-theme="purple"] .dur-btn:hover { border-color: rgba(167,139,250,0.35); color: var(--teal); }
+[data-theme="purple"] .dur-btn.active { border-color: var(--teal); background: rgba(167,139,250,0.08); }
+[data-theme="purple"] .action-btn:hover { border-color: rgba(167,139,250,0.4); }
+[data-theme="purple"] .action-btn.active { border-color: var(--teal); background: rgba(167,139,250,0.1); }
+[data-theme="purple"] .vol-row,
+[data-theme="purple"] .sound-row,
+[data-theme="purple"] .action-btn { background: rgba(13,8,24,0.65); }
+[data-theme="purple"] .fullscreen-btn:hover,
+[data-theme="purple"] .kb-hint-btn:hover { border-color: rgba(167,139,250,0.4); }
+[data-theme="purple"] .kb-hint-popup { border-color: rgba(167,139,250,0.2); }
+[data-theme="purple"] .kb-hint-popup td:first-child { background: rgba(167,139,250,0.08); }
+[data-theme="purple"] .progress-bar-fill {
+  background: linear-gradient(90deg, var(--teal), var(--gold));
+  box-shadow: 0 0 8px rgba(167,139,250,0.35);
+}
+[data-theme="purple"] .calm-fill-arc { stroke: rgba(167,139,250,0.65); }
+[data-theme="purple"] .calm-bg-arc  { stroke: rgba(167,139,250,0.1); }
+[data-theme="purple"] .grounding-next {
+  border-color: rgba(167,139,250,0.2); color: rgba(167,139,250,0.45);
+}
+[data-theme="purple"] .grounding-next:hover { border-color: rgba(167,139,250,0.5); color: var(--teal); }
+[data-theme="purple"] #volSlider { background: rgba(167,139,250,0.28); }
+[data-theme="purple"] #volSlider::-webkit-slider-thumb {
+  background: var(--teal); box-shadow: 0 0 6px rgba(167,139,250,0.5);
+}
+[data-theme="purple"] #volSlider::-moz-range-thumb { background: var(--teal); }
+[data-theme="purple"] .sound-btn:hover { border-color: rgba(167,139,250,0.3); }
+[data-theme="purple"] .sound-btn.active {
+  border-color: rgba(167,139,250,0.55); background: rgba(167,139,250,0.1);
+}
+[data-theme="purple"] .mood-btn.selected {
+  border-color: var(--teal); background: rgba(167,139,250,0.12);
+  box-shadow: 0 0 22px rgba(167,139,250,0.28);
+}
+[data-theme="purple"] .done-restart { border-color: var(--teal); }
+[data-theme="purple"] .intention-input { border-bottom-color: rgba(167,139,250,0.28); }
+[data-theme="purple"] .intention-input:focus { border-bottom-color: var(--teal); }
+
 html, body {
   height: 100%;
   background: var(--bg);
@@ -73,6 +135,21 @@ html, body {
   transition: color 0.2s, border-color 0.2s; flex-shrink: 0;
 }
 .fullscreen-btn:hover { color: var(--teal); border-color: rgba(62,207,178,0.4); }
+/* Theme swatches */
+.theme-swatches {
+  display: flex; align-items: center; gap: 6px;
+}
+.theme-swatch {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.theme-swatch:hover { transform: scale(1.2); }
+.theme-swatch.active { border-color: rgba(255,255,255,0.6); }
+.theme-swatch[data-t="teal"]   { background: #3ecfb2; }
+.theme-swatch[data-t="purple"] { background: #a78bfa; }
+
 /* Keyboard hint tooltip */
 .kb-hint-btn {
   background: transparent; border: 1px solid rgba(212,232,224,0.12);
@@ -583,7 +660,11 @@ html, body {
 <div class="header">
   <span class="brand">Settle In</span>
   <span class="session-timer" id="sessionTimer">5:00</span>
-  <div style="display:flex;align-items:center;gap:8px;position:relative;">
+  <div style="display:flex;align-items:center;gap:12px;position:relative;">
+    <div class="theme-swatches">
+      <button class="theme-swatch active" data-t="teal"   onclick="setTheme('teal')"   title="Ocean theme"></button>
+      <button class="theme-swatch"        data-t="purple" onclick="setTheme('purple')" title="Twilight theme"></button>
+    </div>
     <button class="kb-hint-btn" id="kbHintBtn" onclick="toggleKbHint()" title="Keyboard shortcuts">?</button>
     <div class="kb-hint-popup" id="kbHintPopup">
       <table>
@@ -701,17 +782,23 @@ function mkParticle() {
 }
 for (var _i=0; _i<90; _i++) particles.push(mkParticle());
 
+var THEME_CANVAS = {
+  teal:   { bg0:'rgba(20,50,60,0.9)',  bg1:'rgba(9,21,38,1)',   glow:'rgba(62,207,178,0.055)',  particle:'62,207,178' },
+  purple: { bg0:'rgba(35,18,55,0.9)', bg1:'rgba(13,8,24,1)',   glow:'rgba(167,139,250,0.055)', particle:'167,139,250' }
+};
+
 function drawBg() {
+  var tc = THEME_CANVAS[document.documentElement.dataset.theme] || THEME_CANVAS.teal;
   ctx.clearRect(0,0,W,H);
   var g = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.7);
-  g.addColorStop(0,'rgba(20,50,60,0.9)'); g.addColorStop(1,'rgba(9,21,38,1)');
+  g.addColorStop(0,tc.bg0); g.addColorStop(1,tc.bg1);
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   var gl = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.min(W,H)*0.38);
-  gl.addColorStop(0,'rgba(62,207,178,0.055)'); gl.addColorStop(1,'transparent');
+  gl.addColorStop(0,tc.glow); gl.addColorStop(1,'transparent');
   ctx.fillStyle=gl; ctx.fillRect(0,0,W,H);
   particles.forEach(function(p) {
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle='rgba(62,207,178,'+p.alpha+')'; ctx.fill();
+    ctx.fillStyle='rgba('+tc.particle+','+p.alpha+')'; ctx.fill();
     p.x+=p.vx; p.y+=p.vy;
     if (p.y<-4) { p.y=H+4; p.x=Math.random()*W; }
     if (p.x<-4) p.x=W+4; if (p.x>W+4) p.x=-4;
@@ -1181,6 +1268,21 @@ function revealIntention() {
     intentionTimer = null;
   }, 5000);
 }
+
+// ══ Theme ════════════════════════════════════════════════════════
+function setTheme(name) {
+  document.documentElement.dataset.theme = name === 'teal' ? '' : name;
+  document.querySelectorAll('.theme-swatch').forEach(function(s) {
+    s.classList.toggle('active', s.dataset.t === name);
+  });
+  try { localStorage.setItem('cc-theme', name); } catch(e) {}
+}
+(function() {
+  try {
+    var saved = localStorage.getItem('cc-theme');
+    if (saved && saved !== 'teal') setTheme(saved);
+  } catch(e) {}
+})();
 
 // ══ Fullscreen ═══════════════════════════════════════════════════
 function toggleFullscreen() {
