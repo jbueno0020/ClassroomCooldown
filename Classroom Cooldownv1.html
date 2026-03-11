@@ -1109,10 +1109,10 @@ var currentAudioEl = null;
 var audioReady = false;
 
 var SOUND_FILES = {
-  space:  'dreamscape.m4a',
-  waves:  'ocean-waves.wav',
-  creek:  'creek-loop.wav',
-  chimes: 'wind-chime.m4a'
+  space:  'https://raw.githubusercontent.com/jbueno0020/ClassroomCooldown/main/dreamscape.m4a',
+  waves:  'https://raw.githubusercontent.com/jbueno0020/ClassroomCooldown/main/ocean-waves.wav',
+  creek:  'https://raw.githubusercontent.com/jbueno0020/ClassroomCooldown/main/creek-loop.wav',
+  chimes: 'https://raw.githubusercontent.com/jbueno0020/ClassroomCooldown/main/wind-chime.m4a'
 };
 
 // Must be called synchronously from a user gesture.
@@ -1160,7 +1160,7 @@ function loadAndPlay(soundName, filePath) {
   currentAudioEl = audio;
   audio.currentTime = 0;
   audio.volume = 0;
-  audio.play().catch(function(e) { console.warn('Audio play failed:', soundName, e); });
+  audio.play().catch(function(e) { console.error('Audio play failed [' + soundName + ']:', e.name, e.message, e); });
   var targetVol = isMuted ? 0 : masterVolume;
   var step = 0;
   var fadeIn = setInterval(function() {
